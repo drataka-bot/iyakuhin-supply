@@ -419,14 +419,10 @@
       background: white;
       border-radius: 10px;
       box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-      /* overflow:hidden を外すと sticky が効く。角丸はtable-scrollに移譲 */
-    }
-    .table-scroll {
-      border-radius: 10px;
+      overflow: hidden;
     }
     .table-scroll {
       overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
     }
     table {
       width: 100%;
@@ -462,37 +458,8 @@
     thead th { white-space: nowrap; }
     tbody td { padding: 8px 12px; }
 
-    /* Sticky columns (watch + brand) */
-    td.watch-col, th.watch-col {
-      text-align: center; width: 42px; min-width: 42px; padding: 8px 4px;
-      position: sticky; left: 0; z-index: 1;
-      background: white;
-    }
-    thead th.watch-col { background: #2d3748; z-index: 2; }
-    tbody tr:hover td.watch-col { background: #f7fafc; }
-    tbody tr.status-changed td.watch-col { background: #fffaf0; }
-    tbody tr.status-changed:hover td.watch-col { background: #fef3c7; }
-    td.brand-name, th:nth-child(2) {
-      position: sticky; left: 42px; z-index: 1;
-      background: white;
-    }
-    thead th:nth-child(2) { background: #2d3748; z-index: 2; }
-    tbody tr:hover td.brand-name { background: #f7fafc; }
-    tbody tr.status-changed td.brand-name { background: #fffaf0; }
-    tbody tr.status-changed:hover td.brand-name { background: #fef3c7; }
-
-    /* Scroll shadow indicator */
-    .table-scroll {
-      position: relative;
-    }
-    .table-scroll::after {
-      content: '';
-      position: absolute;
-      top: 0; right: 0; bottom: 0;
-      width: 24px;
-      background: linear-gradient(to right, transparent, rgba(0,0,0,0.06));
-      pointer-events: none;
-    }
+    /* Watch button */
+    td.watch-col, th.watch-col { text-align: center; width: 42px; min-width: 42px; padding: 8px 4px; }
     .watch-btn {
       background: none;
       border: none;
