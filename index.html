@@ -22,6 +22,14 @@
       padding: 20px 24px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
     .header h1 {
       font-size: 1.4rem;
       font-weight: 700;
@@ -37,6 +45,34 @@
       opacity: 0.7;
       margin-top: 2px;
     }
+    .header-watch-btn {
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border: 1.5px solid rgba(255,255,255,0.4);
+      padding: 8px 16px;
+      border-radius: 24px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .header-watch-btn:hover { background: rgba(255,255,255,0.25); }
+    .header-watch-btn.active { background: rgba(255,255,255,0.35); }
+    .watch-badge {
+      background: #f6ad55;
+      color: #7b341e;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 12px;
+      min-width: 22px;
+      text-align: center;
+    }
 
     /* Main container */
     .container {
@@ -44,6 +80,96 @@
       margin: 0 auto;
       padding: 20px 16px;
     }
+
+    /* Notification banner */
+    .notif-banner {
+      display: none;
+      background: linear-gradient(135deg, #744210, #c05621);
+      color: white;
+      padding: 16px 20px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .notif-banner-title {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .notif-section-title {
+      font-weight: 600;
+      font-size: 0.88rem;
+      margin: 8px 0 6px;
+      opacity: 0.9;
+    }
+    .notif-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      font-size: 0.88rem;
+    }
+    .notif-item.improved { background: rgba(72,187,120,0.25); }
+    .notif-item.worsened { background: rgba(229,62,62,0.25); }
+    .notif-drug { font-weight: 600; flex: 1; }
+    .notif-arrow { opacity: 0.9; font-size: 0.82rem; white-space: nowrap; }
+    .notif-close-btn {
+      margin-top: 12px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      padding: 5px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      color: white;
+      font-family: inherit;
+    }
+    .notif-close-btn:hover { background: rgba(255,255,255,0.3); }
+    .notif-allow-btn {
+      margin-left: 8px;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.4);
+      padding: 5px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      color: white;
+      font-family: inherit;
+    }
+    .notif-allow-btn:hover { background: rgba(255,255,255,0.3); }
+
+    /* Notification permission prompt */
+    .notif-prompt {
+      display: none;
+      background: #fffaf0;
+      border: 1px solid #fbd38d;
+      border-left: 4px solid #ed8936;
+      border-radius: 6px;
+      padding: 10px 16px;
+      margin-bottom: 14px;
+      font-size: 0.85rem;
+      color: #7b341e;
+      align-items: center;
+      gap: 12px;
+    }
+    .notif-prompt-text { flex: 1; }
+    .notif-prompt-btn {
+      background: #ed8936;
+      color: white;
+      border: none;
+      padding: 5px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .notif-prompt-btn:hover { background: #c05621; }
 
     /* Info box */
     .info-box {
@@ -297,6 +423,8 @@
       transition: background 0.1s;
     }
     tbody tr:hover { background: #f7fafc; }
+    tbody tr.status-changed { background: #fffaf0; }
+    tbody tr.status-changed:hover { background: #fef3c7; }
     tbody td {
       padding: 10px 12px;
       vertical-align: middle;
@@ -310,6 +438,27 @@
     td.reason { font-size: 0.78rem; color: #718096; min-width: 120px; max-width: 200px; }
     thead th { white-space: nowrap; }
     tbody td { padding: 8px 12px; }
+
+    /* Watch button */
+    td.watch-col, th.watch-col { text-align: center; width: 42px; min-width: 42px; padding: 8px 4px; }
+    .watch-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 2px 4px;
+      color: #cbd5e0;
+      transition: color 0.15s, transform 0.15s;
+      line-height: 1;
+    }
+    .watch-btn:hover { color: #ed8936; transform: scale(1.2); }
+    .watch-btn.watched { color: #f6ad55; }
+    .prev-status {
+      display: block;
+      font-size: 0.72rem;
+      color: #ed8936;
+      margin-top: 3px;
+    }
 
     /* Status badges */
     .badge {
@@ -427,31 +576,96 @@
     .stat-stopped .stat-num { color: #e53e3e; }
     .stat-total .stat-num { color: #4299e1; }
 
+    /* Watchlist section */
+    .watchlist-section {
+      display: none;
+    }
+    .watchlist-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .watchlist-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #2d3748;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .watchlist-subtitle {
+      font-size: 0.82rem;
+      color: #718096;
+      font-weight: 400;
+    }
+    .watchlist-clear-btn {
+      padding: 5px 12px;
+      background: #fff5f5;
+      border: 1px solid #feb2b2;
+      border-radius: 6px;
+      color: #c53030;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .watchlist-clear-btn:hover { background: #fed7d7; }
+    .watchlist-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: #718096;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .watchlist-empty .icon { font-size: 3rem; margin-bottom: 12px; }
+    .watchlist-empty p { font-size: 0.9rem; }
+
     @media (max-width: 640px) {
       .header h1 { font-size: 1.1rem; }
+      .header-watch-btn span:not(.watch-badge) { display: none; }
       .search-row { flex-direction: column; }
       .results-header { flex-direction: column; align-items: flex-start; gap: 8px; }
-      thead th:nth-child(4), tbody td:nth-child(4),
-      thead th:nth-child(5), tbody td:nth-child(5) { display: none; }
+      thead th:nth-child(5), tbody td:nth-child(5),
+      thead th:nth-child(6), tbody td:nth-child(6) { display: none; }
     }
   </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>医薬品供給状況検索システム</h1>
-  <p>厚生労働省「医療用医薬品供給状況」Excelファイルを読み込み、出荷状況を検索できます</p>
+  <div class="header-inner">
+    <div>
+      <h1>医薬品供給状況検索システム</h1>
+      <p>厚生労働省「医療用医薬品供給状況」Excelファイルを読み込み、出荷状況を検索できます</p>
+    </div>
+    <button class="header-watch-btn" id="watchlistToggle" onclick="toggleWatchlistView()" title="ウォッチリスト">
+      &#x1F514;
+      <span>ウォッチリスト</span>
+      <span class="watch-badge" id="watchlistCount">0</span>
+    </button>
+  </div>
 </div>
 
 <div class="container">
 
-  <!-- Auto-load status (shown while fetching data.json) -->
+  <!-- Notification banner -->
+  <div class="notif-banner" id="notifBanner"></div>
+
+  <!-- Notification permission prompt -->
+  <div class="notif-prompt" id="notifPrompt">
+    <div class="notif-prompt-text">&#x1F514; ウォッチ中の医薬品の出荷状況が変わったとき、ブラウザ通知でお知らせできます</div>
+    <button class="notif-prompt-btn" onclick="requestNotifPermission()">通知を許可する</button>
+    <button style="background:none; border:none; cursor:pointer; color:#7b341e; font-size:1rem; padding:0 4px;" onclick="dismissNotifPrompt()" title="閉じる">&#x2715;</button>
+  </div>
+
+  <!-- Auto-load status -->
   <div class="status-bar loading" id="autoLoadBar" style="display:none; margin-bottom:12px;">
     <div class="spinner"></div>
     <span id="autoLoadText">最新データを自動読み込み中...</span>
   </div>
 
-  <!-- Info box (shown only when auto-load fails / manual upload needed) -->
+  <!-- Info box (shown only when auto-load fails) -->
   <div class="info-box" id="infoBox" style="display:none;">
     <strong>データが取得できませんでした。</strong>
     厚生労働省のサイトからExcelを手動でダウンロードしてアップロードしてください。<br>
@@ -460,7 +674,7 @@
     </a>
   </div>
 
-  <!-- Data info bar (shown after load) -->
+  <!-- Data info bar -->
   <div class="data-info-bar" id="dataInfoBar">
     <span id="dataInfoText"></span>
     <button class="reload-btn" onclick="resetApp()">&#x21BA; 別のファイルを読み込む</button>
@@ -539,6 +753,7 @@
         <table id="resultsTable">
           <thead>
             <tr>
+              <th class="watch-col" title="ウォッチリスト">&#x2605;</th>
               <th>品名</th>
               <th>成分名</th>
               <th>製造販売業者</th>
@@ -556,24 +771,34 @@
     </div>
   </div>
 
+  <!-- Watchlist section -->
+  <div class="watchlist-section" id="watchlistSection">
+    <div class="watchlist-header">
+      <div class="watchlist-title">
+        &#x1F514; ウォッチリスト
+        <span class="watchlist-subtitle" id="watchlistSubtitle"></span>
+      </div>
+      <button class="watchlist-clear-btn" onclick="clearWatchlist()">リストをクリア</button>
+    </div>
+    <div id="watchlistItems"></div>
+  </div>
+
 </div>
 
 <script>
   // =========================================================
   // State
   // =========================================================
-  let allData = [];        // 全データ（行オブジェクト配列）
-  let filteredData = [];   // 検索/フィルタ後データ
+  let allData = [];
+  let filteredData = [];
   let currentFilter = 'all';
   let currentSearch = '';
   let currentPage = 1;
   const PAGE_SIZE = 50;
+  let showingWatchlist = false;
 
   // =========================================================
-  // Column indices (0-based, row 0 = header)
-  // ①薬剤区分=0, ②薬効分類=1, ③成分名=2, ④規格単位=3, ⑤YJコード=4,
-  // ⑥品名=5, ⑦製造販売業者名=6, ⑧製品区分=7, ⑨基礎的=8, ⑩供給確保=9,
-  // ⑪薬価収載=10, ⑫出荷対応=11, ⑬更新日=12, ⑭理由=13, ⑮解消見込み=14, ⑯時期=15
+  // Column indices (0-based)
   // =========================================================
   const COL = {
     DRUG_CLASS: 0,
@@ -593,6 +818,275 @@
     RESOLUTION: 14,
     RESOLUTION_DATE: 15,
   };
+
+  // =========================================================
+  // Watchlist (ウォッチリスト)
+  // =========================================================
+  const WATCHLIST_KEY = 'iyakuhin_watchlist_v1';
+  let watchlist = {}; // { [yjCode]: { brand, generic, maker, unit, prevStatus } }
+
+  function loadWatchlist() {
+    try {
+      watchlist = JSON.parse(localStorage.getItem(WATCHLIST_KEY) || '{}');
+    } catch(e) {
+      watchlist = {};
+    }
+    updateWatchlistBadge();
+  }
+
+  function saveWatchlist() {
+    localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist));
+    updateWatchlistBadge();
+  }
+
+  function toggleWatch(yjCode, brand, generic, maker, unit, currentStatus) {
+    if (watchlist[yjCode]) {
+      delete watchlist[yjCode];
+    } else {
+      watchlist[yjCode] = { brand, generic, maker, unit, prevStatus: currentStatus };
+    }
+    saveWatchlist();
+    // Update all buttons for this YJ code
+    document.querySelectorAll(`.watch-btn[data-yj="${CSS.escape(yjCode)}"]`).forEach(btn => {
+      applyWatchBtnStyle(btn, !!watchlist[yjCode]);
+    });
+    if (showingWatchlist) renderWatchlist();
+  }
+
+  function applyWatchBtnStyle(btn, watched) {
+    btn.textContent = watched ? '\u2605' : '\u2606';
+    btn.title = watched ? 'ウォッチリストから削除' : 'ウォッチリストに追加';
+    if (watched) btn.classList.add('watched');
+    else btn.classList.remove('watched');
+  }
+
+  function updateWatchlistBadge() {
+    const count = Object.keys(watchlist).length;
+    document.getElementById('watchlistCount').textContent = count;
+  }
+
+  function clearWatchlist() {
+    if (!confirm('ウォッチリストをすべてクリアしますか？')) return;
+    watchlist = {};
+    saveWatchlist();
+    renderWatchlist();
+    // Refresh star buttons in main table
+    document.querySelectorAll('.watch-btn').forEach(btn => applyWatchBtnStyle(btn, false));
+  }
+
+  // =========================================================
+  // Status change detection
+  // =========================================================
+  function checkStatusChanges() {
+    if (Object.keys(watchlist).length === 0) return;
+
+    // Build current status map
+    const statusMap = {};
+    allData.forEach(row => {
+      const yj = String(row[COL.YJ] || '');
+      if (yj) statusMap[yj] = String(row[COL.STATUS] || '');
+    });
+
+    const improved = [];
+    const worsened = [];
+    const ORDER = { stopped: 0, limited: 1, normal: 2, unknown: -1 };
+    let changed = false;
+
+    Object.entries(watchlist).forEach(([yj, item]) => {
+      const currentStatus = statusMap[yj];
+      if (currentStatus === undefined) return;
+      const prevStatus = item.prevStatus;
+
+      if (prevStatus && prevStatus !== currentStatus) {
+        const prevCls = classifyStatus(prevStatus);
+        const currCls = classifyStatus(currentStatus);
+        const entry = { yj, brand: item.brand, prevStatus, currentStatus, prevCls, currCls };
+        if ((ORDER[currCls] ?? -1) > (ORDER[prevCls] ?? -1)) improved.push(entry);
+        else worsened.push(entry);
+        watchlist[yj].prevStatus = currentStatus;
+        changed = true;
+      } else if (!prevStatus) {
+        watchlist[yj].prevStatus = currentStatus;
+        changed = true;
+      }
+    });
+
+    if (changed) saveWatchlist();
+
+    if (improved.length > 0 || worsened.length > 0) {
+      showNotificationBanner(improved, worsened);
+      sendBrowserNotifications(improved);
+    }
+
+    // Show permission prompt if user has watchlist but hasn't granted/denied yet
+    if (Object.keys(watchlist).length > 0 && 'Notification' in window && Notification.permission === 'default') {
+      document.getElementById('notifPrompt').style.display = 'flex';
+    }
+  }
+
+  function showNotificationBanner(improved, worsened) {
+    const banner = document.getElementById('notifBanner');
+    let html = `<div class="notif-banner-title">&#x1F4E2; ウォッチ中の医薬品に出荷状況の変化がありました</div>`;
+
+    if (improved.length > 0) {
+      html += `<div class="notif-section-title">&#x2705; 出荷再開・改善 (${improved.length}件)</div>`;
+      improved.forEach(c => {
+        html += `<div class="notif-item improved">
+          <span class="notif-drug">${escHtml(c.brand)}</span>
+          <span class="notif-arrow">${escHtml(getStatusLabel(c.prevStatus))} &#x2192; ${escHtml(getStatusLabel(c.currentStatus))}</span>
+        </div>`;
+      });
+    }
+    if (worsened.length > 0) {
+      html += `<div class="notif-section-title" style="margin-top:${improved.length > 0 ? '10px' : '0'};">&#x26A0;&#xFE0F; 出荷状況悪化 (${worsened.length}件)</div>`;
+      worsened.forEach(c => {
+        html += `<div class="notif-item worsened">
+          <span class="notif-drug">${escHtml(c.brand)}</span>
+          <span class="notif-arrow">${escHtml(getStatusLabel(c.prevStatus))} &#x2192; ${escHtml(getStatusLabel(c.currentStatus))}</span>
+        </div>`;
+      });
+    }
+
+    html += `<div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="notif-close-btn" onclick="document.getElementById('notifBanner').style.display='none'">&#x2715; 閉じる</button>
+      <button class="notif-allow-btn" onclick="toggleWatchlistView()">&#x1F514; ウォッチリストで確認</button>
+    </div>`;
+
+    banner.innerHTML = html;
+    banner.style.display = 'block';
+  }
+
+  function getStatusLabel(statusVal) {
+    const s = String(statusVal || '');
+    if (s.startsWith('①') || s.includes('通常出荷')) return '通常出荷';
+    if (s.includes('供給停止') || s.startsWith('⑤')) return '供給停止';
+    if (s.includes('自社の事情') || s.startsWith('②')) return '限定出荷（自社）';
+    if (s.includes('他社品') || s.startsWith('③')) return '限定出荷（他社影響）';
+    if (s.includes('限定出荷') || s.startsWith('④')) return '限定出荷';
+    return s.slice(0, 12) || '不明';
+  }
+
+  async function sendBrowserNotifications(improved) {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || improved.length === 0) return;
+    improved.slice(0, 5).forEach(c => {
+      new Notification(`入荷情報: ${c.brand}`, {
+        body: `${getStatusLabel(c.prevStatus)} → ${getStatusLabel(c.currentStatus)}`,
+        tag: `iyakuhin-${c.yj}`,
+      });
+    });
+  }
+
+  async function requestNotifPermission() {
+    if (!('Notification' in window)) return;
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      document.getElementById('notifPrompt').style.display = 'none';
+    }
+  }
+
+  function dismissNotifPrompt() {
+    document.getElementById('notifPrompt').style.display = 'none';
+    localStorage.setItem('iyakuhin_notif_dismissed', '1');
+  }
+
+  // =========================================================
+  // Watchlist View
+  // =========================================================
+  function toggleWatchlistView() {
+    showingWatchlist = !showingWatchlist;
+    const btn = document.getElementById('watchlistToggle');
+
+    if (showingWatchlist) {
+      btn.classList.add('active');
+      document.getElementById('watchlistSection').style.display = 'block';
+      document.getElementById('searchSection').style.display = 'none';
+      document.getElementById('resultsSection').style.display = 'none';
+      document.getElementById('statsRow').style.display = 'none';
+      renderWatchlist();
+    } else {
+      btn.classList.remove('active');
+      document.getElementById('watchlistSection').style.display = 'none';
+      if (allData.length > 0) {
+        document.getElementById('searchSection').style.display = 'block';
+        document.getElementById('resultsSection').style.display = 'block';
+        document.getElementById('statsRow').style.display = 'grid';
+      }
+    }
+  }
+
+  function renderWatchlist() {
+    const container = document.getElementById('watchlistItems');
+    const entries = Object.entries(watchlist);
+    const subtitle = document.getElementById('watchlistSubtitle');
+    subtitle.textContent = `${entries.length} 件`;
+
+    if (entries.length === 0) {
+      container.innerHTML = `<div class="watchlist-empty">
+        <div class="icon">&#x1F514;</div>
+        <p>ウォッチリストが空です</p>
+        <p style="font-size:0.82rem; color:#a0aec0; margin-top:8px;">
+          検索結果の &#x2606; をクリックして医薬品を追加できます
+        </p>
+      </div>`;
+      return;
+    }
+
+    // Build current data map
+    const statusMap = {};
+    allData.forEach(row => {
+      const yj = String(row[COL.YJ] || '');
+      if (yj) statusMap[yj] = row;
+    });
+
+    const rows = entries.map(([yj, item]) => {
+      const row = statusMap[yj];
+      const status = row ? row[COL.STATUS] : '';
+      const reason = row ? String(row[COL.REASON] || '') : '';
+      const resolution = row ? String(row[COL.RESOLUTION] || '') : '';
+      const prevStatus = item.prevStatus;
+      const changed = prevStatus && prevStatus !== status;
+      const ORDER = { stopped: 0, limited: 1, normal: 2, unknown: -1 };
+      const improved = changed && (ORDER[classifyStatus(status)] ?? -1) > (ORDER[classifyStatus(prevStatus)] ?? -1);
+
+      const yjEsc = escAttr(yj);
+      const brandEsc = escAttr(item.brand);
+      const genericEsc = escAttr(item.generic);
+      const makerEsc = escAttr(item.maker);
+      const unitEsc = escAttr(item.unit);
+      const statusEsc = escAttr(status);
+
+      return `<tr class="${improved ? 'status-changed' : ''}">
+        <td class="watch-col">
+          <button class="watch-btn watched" data-yj="${yjEsc}"
+            onclick="toggleWatch('${yjEsc}','${brandEsc}','${genericEsc}','${makerEsc}','${unitEsc}','${statusEsc}')"
+            title="ウォッチリストから削除">&#x2605;</button>
+        </td>
+        <td class="brand-name">${escHtml(item.brand)}${improved ? ' <span style="background:#c6f6d5;color:#276749;font-size:0.72rem;padding:1px 6px;border-radius:10px;font-weight:600;">&#x2605; 再開</span>' : ''}</td>
+        <td class="generic-name">${escHtml(item.generic)}</td>
+        <td class="manufacturer">${escHtml(item.maker)}</td>
+        <td class="unit">${escHtml(item.unit)}</td>
+        <td class="yj-code">${escHtml(yj)}</td>
+        <td class="status-cell">
+          ${buildBadge(status)}
+          ${changed ? `<span class="prev-status">前回: ${escHtml(getStatusLabel(prevStatus))}</span>` : ''}
+        </td>
+        <td class="reason">${escHtml(reason.replace(/^[１-９\d]．\s*/, ''))}</td>
+        <td class="reason">${escHtml(resolution.replace(/^[ア-オA-Z]．\s*/, ''))}</td>
+      </tr>`;
+    }).join('');
+
+    container.innerHTML = `<div class="table-wrapper"><div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th class="watch-col" title="ウォッチリスト">&#x2605;</th>
+          <th>品名</th><th>成分名</th><th>製造販売業者</th>
+          <th>規格単位</th><th>YJコード</th>
+          <th>出荷状況</th><th>停止理由</th><th>解消見込み</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div></div>`;
+  }
 
   // =========================================================
   // Status classification
@@ -616,7 +1110,6 @@
                    : cls === 'limited' ? 'badge-limited-misc'
                    : cls === 'stopped' ? 'badge-stopped'
                    : 'badge-unknown';
-    // Short label
     let label = s;
     if (s.startsWith('①')) label = '通常出荷';
     else if (s.includes('自社の事情')) label = '限定出荷（自社）';
@@ -666,23 +1159,18 @@
         const ws = workbook.Sheets[sheetName];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-        // Skip header row(s): find first row that looks like data
-        // Row 0 = column headers, row 1 onwards = data
         const dataRows = [];
         let headerFound = false;
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
           const statusVal = row[COL.STATUS] ? String(row[COL.STATUS]) : '';
-          // Data rows have status values starting with ①②③④⑤
           if (!headerFound && (statusVal.startsWith('①') || statusVal.startsWith('②') || statusVal.startsWith('③') || statusVal.startsWith('④') || statusVal.startsWith('⑤'))) {
             headerFound = true;
           }
           if (headerFound) {
             const brand = String(row[COL.BRAND] || '').trim();
             const generic = String(row[COL.GENERIC] || '').trim();
-            if (brand || generic) {
-              dataRows.push(row);
-            }
+            if (brand || generic) dataRows.push(row);
           }
         }
 
@@ -702,7 +1190,6 @@
   }
 
   function initApp(filename, modDate, fetchDate) {
-    // Compute stats
     let normal = 0, limited = 0, stopped = 0;
     allData.forEach(row => {
       const cls = classifyStatus(row[COL.STATUS]);
@@ -722,7 +1209,6 @@
     document.getElementById('dataInfoText').textContent =
       `${filename}　全 ${allData.length.toLocaleString()} 品目${dateLabel}`;
 
-    // Show/hide sections
     document.getElementById('uploadSection').style.display = 'none';
     document.getElementById('infoBox').style.display = 'none';
     document.getElementById('dataInfoBar').style.display = 'flex';
@@ -730,11 +1216,23 @@
     document.getElementById('searchSection').style.display = 'block';
     document.getElementById('resultsSection').style.display = 'block';
 
-    // Initial display: all data
     currentFilter = 'all';
     currentSearch = '';
     currentPage = 1;
     applyFilters();
+
+    // Check for status changes in watchlist
+    checkStatusChanges();
+
+    // Show notif prompt if dismissed flag not set
+    if (
+      Object.keys(watchlist).length > 0 &&
+      'Notification' in window &&
+      Notification.permission === 'default' &&
+      !localStorage.getItem('iyakuhin_notif_dismissed')
+    ) {
+      document.getElementById('notifPrompt').style.display = 'flex';
+    }
   }
 
   // =========================================================
@@ -770,25 +1268,19 @@
   function applyFilters() {
     const q = currentSearch.toLowerCase();
     filteredData = allData.filter(row => {
-      // Status filter
       if (currentFilter !== 'all') {
-        const cls = classifyStatus(row[COL.STATUS]);
-        if (cls !== currentFilter) return false;
+        if (classifyStatus(row[COL.STATUS]) !== currentFilter) return false;
       }
-      // Search filter
       if (q) {
         const brand = String(row[COL.BRAND] || '').toLowerCase();
         const generic = String(row[COL.GENERIC] || '').toLowerCase();
         const maker = String(row[COL.MAKER] || '').toLowerCase();
         const yj = String(row[COL.YJ] || '').toLowerCase();
         const unit = String(row[COL.UNIT] || '').toLowerCase();
-        if (!brand.includes(q) && !generic.includes(q) && !maker.includes(q) && !yj.includes(q) && !unit.includes(q)) {
-          return false;
-        }
+        if (!brand.includes(q) && !generic.includes(q) && !maker.includes(q) && !yj.includes(q) && !unit.includes(q)) return false;
       }
       return true;
     });
-
     renderResults();
   }
 
@@ -797,6 +1289,10 @@
   // =========================================================
   function escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function escAttr(s) {
+    return String(s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
   }
 
   function highlightMatch(text, query) {
@@ -816,7 +1312,6 @@
     const end = Math.min(start + PAGE_SIZE, total);
     const pageData = filteredData.slice(start, end);
 
-    // Count text
     const q = currentSearch;
     let countText = `<strong>${total.toLocaleString()}</strong> 品目`;
     if (q) countText += ` 「${escHtml(q)}」の検索結果`;
@@ -828,7 +1323,7 @@
 
     const tbody = document.getElementById('tableBody');
     if (pageData.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8">
+      tbody.innerHTML = `<tr><td colspan="9">
         <div class="no-results">
           <div class="icon">&#x1F50D;</div>
           <p>該当する医薬品が見つかりませんでした</p>
@@ -836,16 +1331,29 @@
       </td></tr>`;
     } else {
       tbody.innerHTML = pageData.map(row => {
-        const brand = String(row[COL.BRAND] || '');
+        const brand   = String(row[COL.BRAND] || '');
         const generic = String(row[COL.GENERIC] || '');
-        const maker = String(row[COL.MAKER] || '');
-        const unit = String(row[COL.UNIT] || '');
-        const yj = String(row[COL.YJ] || '');
-        const status = row[COL.STATUS];
-        const reason = String(row[COL.REASON] || '');
+        const maker   = String(row[COL.MAKER] || '');
+        const unit    = String(row[COL.UNIT] || '');
+        const yj      = String(row[COL.YJ] || '');
+        const status  = row[COL.STATUS];
+        const reason  = String(row[COL.REASON] || '');
         const resolution = String(row[COL.RESOLUTION] || '');
+        const watched = isWatched(yj);
+
+        const yjEsc     = escAttr(yj);
+        const brandEsc  = escAttr(brand);
+        const genericEsc = escAttr(generic);
+        const makerEsc  = escAttr(maker);
+        const unitEsc   = escAttr(unit);
+        const statusEsc = escAttr(String(status || ''));
 
         return `<tr>
+          <td class="watch-col">
+            <button class="watch-btn ${watched ? 'watched' : ''}" data-yj="${yjEsc}"
+              onclick="toggleWatch('${yjEsc}','${brandEsc}','${genericEsc}','${makerEsc}','${unitEsc}','${statusEsc}')"
+              title="${watched ? 'ウォッチリストから削除' : 'ウォッチリストに追加'}">${watched ? '\u2605' : '\u2606'}</button>
+          </td>
           <td class="brand-name">${highlightMatch(brand, q)}</td>
           <td class="generic-name">${highlightMatch(generic, q)}</td>
           <td class="manufacturer">${highlightMatch(maker, q)}</td>
@@ -861,15 +1369,18 @@
     renderPagination(total);
   }
 
+  function isWatched(yjCode) {
+    return !!watchlist[yjCode];
+  }
+
   function renderPagination(total) {
     const totalPages = Math.ceil(total / PAGE_SIZE);
     const pag = document.getElementById('pagination');
     if (totalPages <= 1) { pag.innerHTML = ''; return; }
 
     let html = '';
-    html += `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&#x2039; 前へ</button>`;
+    html += `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&lsaquo; 前へ</button>`;
 
-    // Page numbers
     const range = [];
     range.push(1);
     if (currentPage > 3) range.push('...');
@@ -885,9 +1396,8 @@
       }
     });
 
-    html += `<button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>次へ &#x203A;</button>`;
+    html += `<button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>次へ &rsaquo;</button>`;
     html += `<span class="page-info">${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, total)} / ${total.toLocaleString()}</span>`;
-
     pag.innerHTML = html;
   }
 
@@ -923,6 +1433,7 @@
     currentFilter = 'all';
     currentSearch = '';
     currentPage = 1;
+    showingWatchlist = false;
 
     document.getElementById('fileInput').value = '';
     document.getElementById('searchInput').value = '';
@@ -932,6 +1443,8 @@
     document.getElementById('statsRow').style.display = 'none';
     document.getElementById('searchSection').style.display = 'none';
     document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('watchlistSection').style.display = 'none';
+    document.getElementById('watchlistToggle').classList.remove('active');
     hideStatus();
 
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -939,13 +1452,11 @@
   }
 
   // =========================================================
-  // data.json 自動読み込み（GitHub Actions が毎日生成）
+  // data.json 自動読み込み
   // =========================================================
   async function tryAutoLoad() {
     const bar = document.getElementById('autoLoadBar');
-    const text = document.getElementById('autoLoadText');
     bar.style.display = 'flex';
-
     try {
       const resp = await fetch('./data.json', { cache: 'no-cache' });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -957,14 +1468,10 @@
       initApp(`厚労省データ（${json.fetchDate} 更新）`, null, json.fetchDate);
     } catch (e) {
       bar.style.display = 'none';
-      // data.json がない場合は手動アップロードへ切り替え
       document.getElementById('infoBox').style.display = 'block';
       document.getElementById('uploadSection').style.display = 'block';
     }
   }
-
-  // ページ読み込み時に自動取得を試みる
-  window.addEventListener('DOMContentLoaded', tryAutoLoad);
 
   // =========================================================
   // CSV Export
@@ -992,6 +1499,14 @@
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  // =========================================================
+  // Init
+  // =========================================================
+  window.addEventListener('DOMContentLoaded', () => {
+    loadWatchlist();
+    tryAutoLoad();
+  });
 </script>
 
 </body>
