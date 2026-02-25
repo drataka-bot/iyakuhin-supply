@@ -404,6 +404,7 @@
     }
     .table-scroll {
       overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     table {
       width: 100%;
@@ -439,8 +440,37 @@
     thead th { white-space: nowrap; }
     tbody td { padding: 8px 12px; }
 
-    /* Watch button */
-    td.watch-col, th.watch-col { text-align: center; width: 42px; min-width: 42px; padding: 8px 4px; }
+    /* Sticky columns (watch + brand) */
+    td.watch-col, th.watch-col {
+      text-align: center; width: 42px; min-width: 42px; padding: 8px 4px;
+      position: sticky; left: 0; z-index: 1;
+      background: white;
+    }
+    thead th.watch-col { background: #2d3748; z-index: 2; }
+    tbody tr:hover td.watch-col { background: #f7fafc; }
+    tbody tr.status-changed td.watch-col { background: #fffaf0; }
+    tbody tr.status-changed:hover td.watch-col { background: #fef3c7; }
+    td.brand-name, th:nth-child(2) {
+      position: sticky; left: 42px; z-index: 1;
+      background: white;
+    }
+    thead th:nth-child(2) { background: #2d3748; z-index: 2; }
+    tbody tr:hover td.brand-name { background: #f7fafc; }
+    tbody tr.status-changed td.brand-name { background: #fffaf0; }
+    tbody tr.status-changed:hover td.brand-name { background: #fef3c7; }
+
+    /* Scroll shadow indicator */
+    .table-scroll {
+      position: relative;
+    }
+    .table-scroll::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0; bottom: 0;
+      width: 24px;
+      background: linear-gradient(to right, transparent, rgba(0,0,0,0.06));
+      pointer-events: none;
+    }
     .watch-btn {
       background: none;
       border: none;
@@ -626,8 +656,12 @@
       .header-watch-btn span:not(.watch-badge) { display: none; }
       .search-row { flex-direction: column; }
       .results-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+      /* 規格単位・YJコード・停止理由・解消見込みを非表示 */
       thead th:nth-child(5), tbody td:nth-child(5),
-      thead th:nth-child(6), tbody td:nth-child(6) { display: none; }
+      thead th:nth-child(6), tbody td:nth-child(6),
+      thead th:nth-child(8), tbody td:nth-child(8),
+      thead th:nth-child(9), tbody td:nth-child(9) { display: none; }
+      td.brand-name { min-width: 120px; }
     }
   </style>
 </head>
