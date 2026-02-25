@@ -334,8 +334,27 @@
     .search-hint {
       font-size: 0.78rem;
       color: #718096;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
+    .mode-toggle { display: flex; gap: 4px; }
+    .mode-btn {
+      padding: 2px 10px;
+      border-radius: 12px;
+      border: 1px solid #cbd5e0;
+      background: white;
+      color: #4a5568;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .mode-btn.active { background: #3182ce; color: white; border-color: #3182ce; }
+    .mode-btn:not(.active):hover { background: #edf2f7; }
 
     /* Filter buttons */
     .filter-label {
@@ -769,7 +788,13 @@
       <button class="search-btn" onclick="performSearch()">検索</button>
       <button class="clear-btn" onclick="clearSearch()">クリア</button>
     </div>
-    <div class="search-hint">例：「アスピリン」「ロキソプロフェン」「メトホルミン」でも検索できます</div>
+    <div class="search-hint">
+      <span>スペース区切りで複数キーワード検索</span>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="modeAnd" onclick="setSearchMode('and')">AND</button>
+        <button class="mode-btn" id="modeOr" onclick="setSearchMode('or')">OR</button>
+      </div>
+    </div>
     <div class="filter-label">出荷状況でフィルタ</div>
     <div class="filter-row">
       <button class="filter-btn all active" onclick="setFilter('all', this)">すべて</button>
@@ -830,6 +855,7 @@
   let filteredData = [];
   let currentFilter = 'all';
   let currentSearch = '';
+  let searchMode = 'and';
   let currentPage = 1;
   const PAGE_SIZE = 50;
   let showingWatchlist = false;
@@ -1287,6 +1313,13 @@
     applyFilters();
   }
 
+  function setSearchMode(mode) {
+    searchMode = mode;
+    document.getElementById('modeAnd').classList.toggle('active', mode === 'and');
+    document.getElementById('modeOr').classList.toggle('active', mode === 'or');
+    performSearch();
+  }
+
   function clearSearch() {
     document.getElementById('searchInput').value = '';
     currentSearch = '';
@@ -1303,18 +1336,25 @@
   }
 
   function applyFilters() {
-    const q = currentSearch.toLowerCase();
+    const terms = currentSearch.toLowerCase().split(/\s+/).filter(Boolean);
     filteredData = allData.filter(row => {
       if (currentFilter !== 'all') {
         if (classifyStatus(row[COL.STATUS]) !== currentFilter) return false;
       }
-      if (q) {
-        const brand = String(row[COL.BRAND] || '').toLowerCase();
-        const generic = String(row[COL.GENERIC] || '').toLowerCase();
-        const maker = String(row[COL.MAKER] || '').toLowerCase();
-        const yj = String(row[COL.YJ] || '').toLowerCase();
-        const unit = String(row[COL.UNIT] || '').toLowerCase();
-        if (!brand.includes(q) && !generic.includes(q) && !maker.includes(q) && !yj.includes(q) && !unit.includes(q)) return false;
+      if (terms.length > 0) {
+        const fields = [
+          String(row[COL.BRAND] || '').toLowerCase(),
+          String(row[COL.GENERIC] || '').toLowerCase(),
+          String(row[COL.MAKER] || '').toLowerCase(),
+          String(row[COL.YJ] || '').toLowerCase(),
+          String(row[COL.UNIT] || '').toLowerCase(),
+        ];
+        const matchesTerm = term => fields.some(f => f.includes(term));
+        if (searchMode === 'and') {
+          if (!terms.every(matchesTerm)) return false;
+        } else {
+          if (!terms.some(matchesTerm)) return false;
+        }
       }
       return true;
     });
@@ -1334,13 +1374,16 @@
 
   function highlightMatch(text, query) {
     if (!query) return escHtml(text);
-    const q = query.toLowerCase();
+    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return escHtml(text);
     const t = String(text || '');
-    const idx = t.toLowerCase().indexOf(q);
-    if (idx < 0) return escHtml(t);
-    return escHtml(t.slice(0, idx))
-      + `<mark style="background:#fef08a;padding:0 1px">${escHtml(t.slice(idx, idx + q.length))}</mark>`
-      + escHtml(t.slice(idx + q.length));
+    const escaped = terms.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
+    return t.split(regex).map((part, i) =>
+      i % 2 === 1
+        ? `<mark style="background:#fef08a;padding:0 1px">${escHtml(part)}</mark>`
+        : escHtml(part)
+    ).join('');
   }
 
   function renderResults() {
