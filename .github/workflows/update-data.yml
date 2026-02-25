@@ -1,0 +1,37 @@
+name: 医薬品供給データ自動更新
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 毎日 11:00 JST (UTC+9)
+  workflow_dispatch:       # 手動実行も可能
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python セットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存ライブラリ インストール
+        run: pip install requests openpyxl beautifulsoup4
+
+      - name: データ取得・変換
+        run: python scripts/fetch_data.py
+
+      - name: 変更をコミット & プッシュ
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git diff --cached --quiet && echo "データに変更なし" || (
+            git commit -m "Auto-update: 医薬品供給状況 $(date +'%Y-%m-%d')" &&
+            git push
+          )

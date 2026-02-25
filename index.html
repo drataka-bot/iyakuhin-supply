@@ -445,10 +445,16 @@
 
 <div class="container">
 
-  <!-- Info box -->
-  <div class="info-box">
-    <strong>使い方：</strong>
-    厚生労働省のサイトから最新のExcelファイルをダウンロードし、下のエリアにアップロードしてください。<br>
+  <!-- Auto-load status (shown while fetching data.json) -->
+  <div class="status-bar loading" id="autoLoadBar" style="display:none; margin-bottom:12px;">
+    <div class="spinner"></div>
+    <span id="autoLoadText">最新データを自動読み込み中...</span>
+  </div>
+
+  <!-- Info box (shown only when auto-load fails / manual upload needed) -->
+  <div class="info-box" id="infoBox" style="display:none;">
+    <strong>データが取得できませんでした。</strong>
+    厚生労働省のサイトからExcelを手動でダウンロードしてアップロードしてください。<br>
     <a class="mhlw-link" href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryou/kouhatu-iyaku/04_00003.html" target="_blank" rel="noopener">
       &#x1F517; 厚生労働省 医療用医薬品供給状況ページを開く
     </a>
@@ -695,7 +701,7 @@
     reader.readAsArrayBuffer(file);
   }
 
-  function initApp(filename, modDate) {
+  function initApp(filename, modDate, fetchDate) {
     // Compute stats
     let normal = 0, limited = 0, stopped = 0;
     allData.forEach(row => {
@@ -710,12 +716,15 @@
     document.getElementById('statLimited').textContent = limited.toLocaleString();
     document.getElementById('statStopped').textContent = stopped.toLocaleString();
 
-    const dateStr = modDate ? new Date(modDate).toLocaleDateString('ja-JP') : '';
+    let dateLabel = '';
+    if (fetchDate) dateLabel = `　データ更新日：${fetchDate}`;
+    else if (modDate) dateLabel = `　ファイル更新日：${new Date(modDate).toLocaleDateString('ja-JP')}`;
     document.getElementById('dataInfoText').textContent =
-      `読み込み済み：${filename}　全 ${allData.length.toLocaleString()} 品目${dateStr ? '　（ファイル更新日：' + dateStr + '）' : ''}`;
+      `${filename}　全 ${allData.length.toLocaleString()} 品目${dateLabel}`;
 
     // Show/hide sections
     document.getElementById('uploadSection').style.display = 'none';
+    document.getElementById('infoBox').style.display = 'none';
     document.getElementById('dataInfoBar').style.display = 'flex';
     document.getElementById('statsRow').style.display = 'grid';
     document.getElementById('searchSection').style.display = 'block';
@@ -918,6 +927,7 @@
     document.getElementById('fileInput').value = '';
     document.getElementById('searchInput').value = '';
     document.getElementById('uploadSection').style.display = 'block';
+    document.getElementById('infoBox').style.display = 'block';
     document.getElementById('dataInfoBar').style.display = 'none';
     document.getElementById('statsRow').style.display = 'none';
     document.getElementById('searchSection').style.display = 'none';
@@ -927,6 +937,34 @@
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('.filter-btn.all').classList.add('active');
   }
+
+  // =========================================================
+  // data.json 自動読み込み（GitHub Actions が毎日生成）
+  // =========================================================
+  async function tryAutoLoad() {
+    const bar = document.getElementById('autoLoadBar');
+    const text = document.getElementById('autoLoadText');
+    bar.style.display = 'flex';
+
+    try {
+      const resp = await fetch('./data.json', { cache: 'no-cache' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+      if (!json.rows || json.rows.length === 0) throw new Error('データなし');
+
+      bar.style.display = 'none';
+      allData = json.rows;
+      initApp(`厚労省データ（${json.fetchDate} 更新）`, null, json.fetchDate);
+    } catch (e) {
+      bar.style.display = 'none';
+      // data.json がない場合は手動アップロードへ切り替え
+      document.getElementById('infoBox').style.display = 'block';
+      document.getElementById('uploadSection').style.display = 'block';
+    }
+  }
+
+  // ページ読み込み時に自動取得を試みる
+  window.addEventListener('DOMContentLoaded', tryAutoLoad);
 
   // =========================================================
   // CSV Export
