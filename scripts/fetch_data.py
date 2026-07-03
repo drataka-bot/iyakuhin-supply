@@ -410,7 +410,7 @@ def main():
         size_kb = len(open(OUTPUT_FILE, encoding="utf-8").read()) // 1024
         print(f"保存完了: {OUTPUT_FILE} ({size_kb:,} KB, {len(rows):,} 件)")
 
-        # 包装情報を薬価基準から取得
+        # 包装情報をMEDIS HOTマスターから取得
         fetch_package_info()
 
     except Exception as e:
