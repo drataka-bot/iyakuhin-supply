@@ -640,6 +640,73 @@
     .watchlist-empty .icon { font-size: 3rem; margin-bottom: 12px; }
     .watchlist-empty p { font-size: 0.9rem; }
 
+    /* History cards */
+    .history-day {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .history-day-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      background: #f7fafc;
+      gap: 12px;
+    }
+    .history-day-header:hover { background: #edf2f7; }
+    .history-date {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #2d3748;
+    }
+    .history-summary {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .history-tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .history-tag.improved { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
+    .history-tag.worsened { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
+    .history-tag.new      { background: #fffaf0; color: #c05621; border: 1px solid #fbd38d; }
+    .history-tag.changed  { background: #f7fafc; color: #4a5568; border: 1px solid #e2e8f0; }
+    .history-chevron { color: #a0aec0; font-size: 0.8rem; transition: transform 0.2s; }
+    .history-chevron.open { transform: rotate(180deg); }
+    .history-body { display: none; }
+    .history-body.open { display: block; }
+    .history-group-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #4a5568;
+      padding: 8px 16px 4px;
+    }
+    .history-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 7px 16px;
+      border-bottom: 1px solid #f7fafc;
+      font-size: 0.85rem;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-item-brand { font-weight: 500; color: #2d3748; flex: 1; min-width: 0; }
+    .history-item-brand small { display: block; color: #718096; font-weight: 400; font-size: 0.78rem; }
+    .history-item-arrow {
+      font-size: 0.78rem;
+      color: #718096;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
     @media (max-width: 640px) {
       .header h1 { font-size: 1.1rem; }
       .header-watch-btn span:not(.watch-badge) { display: none; }
@@ -662,11 +729,17 @@
       <h1>医薬品供給状況検索システム</h1>
       <p>厚生労働省「医療用医薬品供給状況」Excelファイルを読み込み、出荷状況を検索できます</p>
     </div>
-    <button class="header-watch-btn" id="watchlistToggle" onclick="toggleWatchlistView()" title="ウォッチリスト">
-      &#x1F514;
-      <span>ウォッチリスト</span>
-      <span class="watch-badge" id="watchlistCount">0</span>
-    </button>
+    <div style="display:flex; gap:8px; flex-shrink:0;">
+      <button class="header-watch-btn" id="historyToggle" onclick="toggleHistoryView()" title="更新履歴">
+        &#x1F4C5;
+        <span>更新履歴</span>
+      </button>
+      <button class="header-watch-btn" id="watchlistToggle" onclick="toggleWatchlistView()" title="ウォッチリスト">
+        &#x1F514;
+        <span>ウォッチリスト</span>
+        <span class="watch-badge" id="watchlistCount">0</span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -801,6 +874,14 @@
   </div>
 
   <!-- Watchlist section -->
+  <!-- History section -->
+  <div class="watchlist-section" id="historySection">
+    <div class="watchlist-header">
+      <div class="watchlist-title">&#x1F4C5; 更新履歴</div>
+    </div>
+    <div id="historyItems"></div>
+  </div>
+
   <div class="watchlist-section" id="watchlistSection">
     <div class="watchlist-header">
       <div class="watchlist-title">
@@ -1027,6 +1108,8 @@
     const btn = document.getElementById('watchlistToggle');
 
     if (showingWatchlist) {
+      // 履歴ビューを閉じる
+      if (showingHistory) toggleHistoryView();
       btn.classList.add('active');
       document.getElementById('watchlistSection').style.display = 'block';
       document.getElementById('searchSection').style.display = 'none';
@@ -1548,11 +1631,128 @@
   }
 
   // =========================================================
+  // 更新履歴
+  // =========================================================
+  let historyData = [];
+  let showingHistory = false;
+
+  async function tryLoadHistory() {
+    try {
+      const resp = await fetch('./changes.json', { cache: 'no-cache' });
+      if (!resp.ok) return;
+      const json = await resp.json();
+      historyData = json.history || [];
+    } catch(e) {
+      historyData = [];
+    }
+  }
+
+  function toggleHistoryView() {
+    showingHistory = !showingHistory;
+    const btn = document.getElementById('historyToggle');
+
+    if (showingHistory) {
+      // ウォッチリストを閉じる
+      if (showingWatchlist) toggleWatchlistView();
+      btn.classList.add('active');
+      document.getElementById('historySection').style.display = 'block';
+      document.getElementById('searchSection').style.display = 'none';
+      document.getElementById('resultsSection').style.display = 'none';
+      document.getElementById('statsRow').style.display = 'none';
+      renderHistory();
+    } else {
+      btn.classList.remove('active');
+      document.getElementById('historySection').style.display = 'none';
+      if (allData.length > 0) {
+        document.getElementById('searchSection').style.display = 'block';
+        document.getElementById('resultsSection').style.display = 'block';
+        document.getElementById('statsRow').style.display = 'grid';
+      }
+    }
+  }
+
+  function statusShort(s) {
+    if (!s) return '不明';
+    if (s.startsWith('①')) return '通常出荷';
+    if (s.startsWith('⑤') || s.includes('供給停止')) return '供給停止';
+    if (s.includes('自社の事情') || s.startsWith('②')) return '限定出荷（自社）';
+    if (s.includes('他社品') || s.startsWith('③')) return '限定出荷（他社影響）';
+    if (s.includes('限定出荷') || s.startsWith('④')) return '限定出荷';
+    return s.slice(0, 14);
+  }
+
+  function renderHistory() {
+    const container = document.getElementById('historyItems');
+    if (historyData.length === 0) {
+      container.innerHTML = `<div class="watchlist-empty">
+        <div class="icon">&#x1F4C5;</div>
+        <p>更新履歴がまだありません</p>
+        <p style="font-size:0.82rem;color:#a0aec0;margin-top:8px;">GitHub Actionsが毎日データを更新すると履歴が蓄積されます</p>
+      </div>`;
+      return;
+    }
+
+    container.innerHTML = historyData.map((day, idx) => {
+      const changes = day.changes || [];
+      const improved = changes.filter(c => c.type === 'improved');
+      const worsened = changes.filter(c => c.type === 'worsened');
+      const newItems = changes.filter(c => c.type === 'new');
+      const changed  = changes.filter(c => c.type === 'changed');
+
+      const tags = [
+        improved.length ? `<span class="history-tag improved">&#x2705; 出荷再開 ${improved.length}件</span>` : '',
+        worsened.length ? `<span class="history-tag worsened">&#x26A0; 悪化 ${worsened.length}件</span>` : '',
+        newItems.length ? `<span class="history-tag new">&#x1F195; 新規 ${newItems.length}件</span>` : '',
+        changed.length  ? `<span class="history-tag changed">&#x1F504; 変化 ${changed.length}件</span>` : '',
+      ].filter(Boolean).join('');
+
+      const groups = [
+        { label: '✅ 出荷再開・改善', items: improved },
+        { label: '⚠️ 限定出荷・悪化', items: worsened },
+        { label: '🆕 新規追加（限定/停止）', items: newItems },
+        { label: '🔄 その他変化', items: changed },
+      ].filter(g => g.items.length > 0);
+
+      const bodyHtml = groups.map(g => `
+        <div class="history-group-title">${escHtml(g.label)}</div>
+        ${g.items.map(c => `
+          <div class="history-item">
+            <div class="history-item-brand">
+              ${escHtml(c.brand)}
+              <small>${escHtml(c.generic)} / ${escHtml(c.maker)}</small>
+            </div>
+            <div class="history-item-arrow">
+              ${c.from ? escHtml(statusShort(c.from)) + ' &#x2192; ' : ''}${escHtml(statusShort(c.to))}
+            </div>
+          </div>`).join('')}
+      `).join('');
+
+      const id = `hday${idx}`;
+      return `<div class="history-day">
+        <div class="history-day-header" onclick="toggleHistoryDay('${id}')">
+          <span class="history-date">${escHtml(day.date)}</span>
+          <div class="history-summary">${tags}</div>
+          <span class="history-chevron" id="${id}chev">&#x25BC;</span>
+        </div>
+        <div class="history-body${idx === 0 ? ' open' : ''}" id="${id}">${bodyHtml}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleHistoryDay(id) {
+    const body = document.getElementById(id);
+    const chev = document.getElementById(id + 'chev');
+    const isOpen = body.classList.toggle('open');
+    chev.classList.toggle('open', isOpen);
+  }
+
+  // =========================================================
   // Init
   // =========================================================
   window.addEventListener('DOMContentLoaded', () => {
     loadWatchlist();
     tryAutoLoad();
+    tryLoadHistory();
   });
 </script>
 

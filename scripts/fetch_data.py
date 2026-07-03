@@ -5,7 +5,7 @@ GitHub Actions から毎日実行される。
 import requests
 import openpyxl
 import json
-import re
+import os
 import sys
 from io import BytesIO
 from datetime import date
@@ -14,15 +14,18 @@ from bs4 import BeautifulSoup
 MHLW_PAGE = "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryou/kouhatu-iyaku/04_00003.html"
 MHLW_BASE = "https://www.mhlw.go.jp"
 OUTPUT_FILE = "data.json"
+CHANGES_FILE = "changes.json"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; DataFetcher/1.0)"
 }
 
 # 列インデックス（0始まり）
-COL_STATUS = 11   # ⑫出荷対応の状況
-COL_BRAND  = 5    # ⑥品名
-COL_GENERIC = 2   # ③成分名
+COL_STATUS  = 11   # ⑫出荷対応の状況
+COL_BRAND   = 5    # ⑥品名
+COL_GENERIC = 2    # ③成分名
+COL_YJ      = 4    # ⑤YJコード
+COL_MAKER   = 6    # ⑦製造販売業者名
 
 
 def find_excel_url():
@@ -87,14 +90,133 @@ def parse_excel(content):
     return rows
 
 
+def load_previous_status_map():
+    """既存の data.json から YJコード→{status, brand, generic, maker} のマップを返す"""
+    if not os.path.exists(OUTPUT_FILE):
+        return {}
+    try:
+        with open(OUTPUT_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        result = {}
+        for row in data.get("rows", []):
+            yj = row[COL_YJ] if len(row) > COL_YJ else ""
+            if yj:
+                result[yj] = {
+                    "status":  row[COL_STATUS]  if len(row) > COL_STATUS  else "",
+                    "brand":   row[COL_BRAND]   if len(row) > COL_BRAND   else "",
+                    "generic": row[COL_GENERIC] if len(row) > COL_GENERIC else "",
+                    "maker":   row[COL_MAKER]   if len(row) > COL_MAKER   else "",
+                }
+        return result
+    except Exception as e:
+        print(f"既存データ読み込みスキップ: {e}")
+        return {}
+
+
+STATUS_ORDER = {"①": 3, "②": 1, "③": 1, "④": 1, "⑤": 0}
+
+def classify_change(old_status, new_status):
+    """変化の種類を分類する"""
+    old_ord = STATUS_ORDER.get(old_status[:1] if old_status else "", -1)
+    new_ord = STATUS_ORDER.get(new_status[:1] if new_status else "", -1)
+    if new_ord > old_ord:
+        return "improved"   # 改善（限定→通常 など）
+    elif new_ord < old_ord:
+        return "worsened"   # 悪化（通常→限定 など）
+    return "changed"        # 同カテゴリ内の変化
+
+
+def detect_changes(old_map, new_rows):
+    """新旧データを比較して変化リストを返す"""
+    new_map = {}
+    for row in new_rows:
+        yj = row[COL_YJ] if len(row) > COL_YJ else ""
+        if yj:
+            new_map[yj] = {
+                "status":  row[COL_STATUS]  if len(row) > COL_STATUS  else "",
+                "brand":   row[COL_BRAND]   if len(row) > COL_BRAND   else "",
+                "generic": row[COL_GENERIC] if len(row) > COL_GENERIC else "",
+                "maker":   row[COL_MAKER]   if len(row) > COL_MAKER   else "",
+            }
+
+    changes = []
+
+    # ステータス変化を検出
+    for yj, new_item in new_map.items():
+        if yj in old_map:
+            old_status = old_map[yj]["status"]
+            new_status = new_item["status"]
+            if old_status != new_status:
+                changes.append({
+                    "yj":      yj,
+                    "brand":   new_item["brand"],
+                    "generic": new_item["generic"],
+                    "maker":   new_item["maker"],
+                    "from":    old_status,
+                    "to":      new_status,
+                    "type":    classify_change(old_status, new_status),
+                })
+        else:
+            # 新規追加品目で通常出荷以外（限定・停止で新規追加）
+            new_status = new_item["status"]
+            if new_status and new_status[:1] not in ("①", ""):
+                changes.append({
+                    "yj":      yj,
+                    "brand":   new_item["brand"],
+                    "generic": new_item["generic"],
+                    "maker":   new_item["maker"],
+                    "from":    "",
+                    "to":      new_status,
+                    "type":    "new",
+                })
+
+    return changes
+
+
+def update_changes_file(changes, today):
+    """changes.json に今日の変化を追記する（最大180日分保持）"""
+    if not changes:
+        print("変化なし: changes.json の更新をスキップ")
+        return
+
+    history = []
+    if os.path.exists(CHANGES_FILE):
+        try:
+            with open(CHANGES_FILE, encoding="utf-8") as f:
+                history = json.load(f).get("history", [])
+        except Exception:
+            history = []
+
+    # 同じ日付のエントリは上書き
+    history = [h for h in history if h.get("date") != today]
+    history.insert(0, {"date": today, "changes": changes})
+    history = history[:180]  # 最大180日分
+
+    with open(CHANGES_FILE, "w", encoding="utf-8") as f:
+        json.dump({"history": history}, f, ensure_ascii=False, separators=(",", ":"))
+
+    print(f"変化記録: {len(changes)} 件 → {CHANGES_FILE}")
+
+
 def main():
     try:
+        # 既存データを先に読み込む（上書き前に差分検出するため）
+        old_map = load_previous_status_map()
+
         xlsx_url, filename = find_excel_url()
         content = download_excel(xlsx_url)
         rows = parse_excel(content)
+        today = date.today().isoformat()
+
+        # 差分を検出してchanges.jsonを更新
+        if old_map:
+            changes = detect_changes(old_map, rows)
+            update_changes_file(changes, today)
+        else:
+            print("初回実行のため差分検出をスキップ")
 
         result = {
-            "fetchDate": date.today().isoformat(),
+            "fetchDate": today,
             "source": filename,
             "rows": rows
         }
