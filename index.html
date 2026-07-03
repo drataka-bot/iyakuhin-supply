@@ -1183,7 +1183,8 @@
         </div>
         <div class="card-brand">${escHtml(item.brand)}</div>
         ${item.generic ? `<div class="card-generic-link" data-generic="${genericEsc}" onclick="searchByGeneric(this.dataset.generic)" title="この成分の代替品を検索">${escHtml(item.generic)}</div>` : ''}
-        ${item.unit ? `<div class="card-unit">${escHtml(item.unit)}</div>` : ''}
+        ${item.unit ? `<div class="card-unit">規格：${escHtml(item.unit)}</div>` : ''}
+        ${packageInfo[yj] ? `<div class="card-unit">包装：${escHtml(packageInfo[yj])}</div>` : ''}
         <div class="card-maker">製造販売：${escHtml(item.maker)}</div>
         <div class="card-yj">YJ ${escHtml(yj)}</div>
         ${reasonClean ? `<div class="card-reason">${escHtml(reasonClean)}</div>` : ''}
@@ -1574,7 +1575,8 @@
           <div class="card-status-row">${buildBadge(status)}</div>
           <div class="card-brand">${highlightMatch(brand, q)}</div>
           ${generic ? `<div class="card-generic-link" data-generic="${genericEsc}" onclick="searchByGeneric(this.dataset.generic)" title="この成分の代替品を検索">${highlightMatch(generic, q)}</div>` : ''}
-          ${unit ? `<div class="card-unit">${escHtml(unit)}</div>` : ''}
+          ${unit ? `<div class="card-unit">規格：${escHtml(unit)}</div>` : ''}
+          ${packageInfo[yj] ? `<div class="card-unit">包装：${escHtml(packageInfo[yj])}</div>` : ''}
           <div class="card-maker">製造販売：${highlightMatch(maker, q)}</div>
           <div class="card-yj">YJ ${escHtml(yj)}</div>
           ${reason ? `<div class="card-reason">${escHtml(reason)}</div>` : ''}
@@ -1678,10 +1680,21 @@
     const bar = document.getElementById('autoLoadBar');
     bar.style.display = 'flex';
     try {
-      const resp = await fetch('./data.json', { cache: 'no-cache' });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const json = await resp.json();
+      // data.json と package_info.json を並行取得
+      const [dataResp, pkgResp] = await Promise.all([
+        fetch('./data.json', { cache: 'no-cache' }),
+        fetch('./package_info.json', { cache: 'no-cache' }).catch(() => null),
+      ]);
+
+      if (!dataResp.ok) throw new Error(`HTTP ${dataResp.status}`);
+      const json = await dataResp.json();
       if (!json.rows || json.rows.length === 0) throw new Error('データなし');
+
+      // 包装情報（取得できなければ空のまま）
+      if (pkgResp && pkgResp.ok) {
+        packageInfo = await pkgResp.json();
+        console.log(`包装情報: ${Object.keys(packageInfo).length.toLocaleString()} 件`);
+      }
 
       bar.style.display = 'none';
       allData = json.rows;
@@ -1725,6 +1738,7 @@
   // =========================================================
   let historyData = [];
   let showingHistory = false;
+  let packageInfo = {}; // YJコード → 包装文字列
 
   async function tryLoadHistory() {
     try {
