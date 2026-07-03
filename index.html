@@ -441,6 +441,7 @@
     }
     .drug-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.09); border-color: #c6d0dc; }
     .drug-card.card-changed { background: #fffcf5; border-color: #fbd38d; }
+    .drug-card.card-improved { background: #f0fff4; border-color: #9ae6b4; }
     .card-watch { position: absolute; top: 12px; right: 12px; }
     .watch-btn {
       background: none;
@@ -1167,37 +1168,30 @@
       const unitEsc = escAttr(item.unit);
       const statusEsc = escAttr(status);
 
-      return `<tr class="${improved ? 'status-changed' : ''}">
-        <td class="watch-col">
+      const reasonClean = reason.replace(/^[１-９\d]．\s*/, '');
+      const resClean = resolution.replace(/^[ア-オA-Z]．\s*/, '');
+      return `<div class="drug-card${improved ? ' card-improved' : ''}">
+        <div class="card-watch">
           <button class="watch-btn watched" data-yj="${yjEsc}"
             onclick="toggleWatch('${yjEsc}','${brandEsc}','${genericEsc}','${makerEsc}','${unitEsc}','${statusEsc}')"
             title="ウォッチリストから削除">&#x2605;</button>
-        </td>
-        <td class="brand-name">${escHtml(item.brand)}${improved ? ' <span style="background:#c6f6d5;color:#276749;font-size:0.72rem;padding:1px 6px;border-radius:10px;font-weight:600;">&#x2605; 再開</span>' : ''}</td>
-        <td class="generic-name">${escHtml(item.generic)}</td>
-        <td class="manufacturer">${escHtml(item.maker)}</td>
-        <td class="unit">${escHtml(item.unit)}</td>
-        <td class="yj-code">${escHtml(yj)}</td>
-        <td class="status-cell">
+        </div>
+        <div class="card-status-row">
           ${buildBadge(status)}
-          ${changed ? `<span class="prev-status">前回: ${escHtml(getStatusLabel(prevStatus))}</span>` : ''}
-        </td>
-        <td class="reason">${escHtml(reason.replace(/^[１-９\d]．\s*/, ''))}</td>
-        <td class="reason">${escHtml(resolution.replace(/^[ア-オA-Z]．\s*/, ''))}</td>
-      </tr>`;
+          ${improved ? '<span style="background:#c6f6d5;color:#276749;font-size:0.72rem;padding:1px 6px;border-radius:10px;font-weight:600;">&#x2605; 再開</span>' : ''}
+          ${changed && !improved ? `<span class="prev-status-tag">前回: ${escHtml(getStatusLabel(prevStatus))}</span>` : ''}
+        </div>
+        <div class="card-brand">${escHtml(item.brand)}</div>
+        ${item.generic ? `<div class="card-generic-link" data-generic="${genericEsc}" onclick="searchByGeneric(this.dataset.generic)" title="この成分の代替品を検索">${escHtml(item.generic)}</div>` : ''}
+        ${item.unit ? `<div class="card-unit">${escHtml(item.unit)}</div>` : ''}
+        <div class="card-maker">製造販売：${escHtml(item.maker)}</div>
+        <div class="card-yj">YJ ${escHtml(yj)}</div>
+        ${reasonClean ? `<div class="card-reason">${escHtml(reasonClean)}</div>` : ''}
+        ${resClean ? `<div class="card-resolution">解消見込み：${escHtml(resClean)}</div>` : ''}
+      </div>`;
     }).join('');
 
-    container.innerHTML = `<div class="table-wrapper"><div class="table-scroll">
-      <table>
-        <thead><tr>
-          <th class="watch-col" title="ウォッチリスト">&#x2605;</th>
-          <th>品名</th><th>成分名</th><th>製造販売業者</th>
-          <th>規格単位</th><th>YJコード</th>
-          <th>出荷状況</th><th>停止理由</th><th>解消見込み</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div></div>`;
+    container.innerHTML = `<div class="drug-cards">${rows}</div>`;
   }
 
   // =========================================================
