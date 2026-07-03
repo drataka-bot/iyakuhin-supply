@@ -10,7 +10,7 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif;
-      background: #f0f4f8;
+      background: #f4f6f8;
       color: #1a202c;
       min-height: 100vh;
     }
@@ -429,64 +429,42 @@
     }
     .export-btn:hover { background: #f7fafc; }
 
-    /* Table */
-    .table-wrapper {
+    /* Drug cards (DSJP style) */
+    .drug-cards { display: flex; flex-direction: column; gap: 10px; }
+    .drug-card {
       background: white;
-      border-radius: 10px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-      overflow: hidden;
+      border: 1px solid #e8edf2;
+      border-radius: 12px;
+      padding: 14px 16px;
+      position: relative;
+      transition: box-shadow 0.15s, border-color 0.15s;
     }
-    .table-scroll {
-      overflow-x: auto;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
-    thead { background: #2d3748; color: white; }
-    thead th {
-      padding: 11px 12px;
-      text-align: left;
-      font-weight: 600;
-      white-space: nowrap;
-      font-size: 0.8rem;
-    }
-    tbody tr {
-      border-bottom: 1px solid #f0f0f0;
-      transition: background 0.1s;
-    }
-    tbody tr:hover { background: #f7fafc; }
-    tbody tr.status-changed { background: #fffaf0; }
-    tbody tr.status-changed:hover { background: #fef3c7; }
-    tbody td {
-      padding: 10px 12px;
-      vertical-align: middle;
-    }
-    td.brand-name { font-weight: 500; color: #2d3748; white-space: nowrap; min-width: 180px; }
-    td.generic-name { color: #4a5568; font-size: 0.82rem; white-space: nowrap; min-width: 140px; }
-    td.manufacturer { color: #718096; font-size: 0.8rem; white-space: nowrap; min-width: 80px; }
-    td.unit { white-space: nowrap; min-width: 100px; }
-    td.yj-code { font-family: monospace; font-size: 0.78rem; color: #718096; white-space: nowrap; min-width: 110px; }
-    td.status-cell { white-space: nowrap; min-width: 140px; }
-    td.reason { font-size: 0.78rem; color: #718096; min-width: 120px; max-width: 200px; }
-    thead th { white-space: nowrap; }
-    tbody td { padding: 8px 12px; }
-
-    /* Watch button */
-    td.watch-col, th.watch-col { text-align: center; width: 42px; min-width: 42px; padding: 8px 4px; }
+    .drug-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.09); border-color: #c6d0dc; }
+    .drug-card.card-changed { background: #fffcf5; border-color: #fbd38d; }
+    .card-watch { position: absolute; top: 12px; right: 12px; }
     .watch-btn {
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 1.2rem;
+      font-size: 1.3rem;
       padding: 2px 4px;
       color: #cbd5e0;
       transition: color 0.15s, transform 0.15s;
       line-height: 1;
     }
-    .watch-btn:hover { color: #ed8936; transform: scale(1.2); }
+    .watch-btn:hover { color: #ed8936; transform: scale(1.15); }
     .watch-btn.watched { color: #f6ad55; }
+    .card-meta { font-size: 0.73rem; color: #a0aec0; margin-bottom: 8px; line-height: 1.7; }
+    .card-status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .card-brand { font-size: 1rem; font-weight: 700; color: #1a202c; margin-bottom: 5px; line-height: 1.4; padding-right: 34px; }
+    .card-generic-link { font-size: 0.82rem; color: #3182ce; cursor: pointer; display: inline-block; margin-bottom: 5px; }
+    .card-generic-link:hover { text-decoration: underline; color: #2b6cb0; }
+    .card-unit { font-size: 0.78rem; color: #718096; margin-bottom: 5px; }
+    .card-maker { font-size: 0.75rem; color: #718096; }
+    .card-reason { font-size: 0.75rem; color: #c53030; margin-top: 8px; padding-top: 8px; border-top: 1px solid #fed7d7; }
+    .card-resolution { font-size: 0.75rem; color: #718096; margin-top: 4px; }
+    .card-yj { font-size: 0.7rem; color: #b0bac5; font-family: monospace; margin-top: 6px; }
+    .prev-status-tag { font-size: 0.7rem; background: #fffaf0; border: 1px solid #fbd38d; color: #c05621; border-radius: 10px; padding: 1px 7px; }
     .prev-status {
       display: block;
       font-size: 0.72rem;
@@ -887,27 +865,8 @@
       <div class="results-count" id="resultsCount"></div>
       <button class="export-btn" onclick="exportCSV()">&#x1F4E5; CSVエクスポート</button>
     </div>
-    <div class="table-wrapper">
-      <div class="table-scroll">
-        <table id="resultsTable">
-          <thead>
-            <tr>
-              <th class="watch-col" title="ウォッチリスト">&#x2605;</th>
-              <th>品名</th>
-              <th>成分名</th>
-              <th>製造販売業者</th>
-              <th>規格単位</th>
-              <th>YJコード</th>
-              <th>出荷状況</th>
-              <th>停止理由</th>
-              <th>解消見込み</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody"></tbody>
-        </table>
-      </div>
-      <div class="pagination" id="pagination"></div>
-    </div>
+    <div class="drug-cards" id="tableBody"></div>
+    <div class="pagination" id="pagination"></div>
   </div>
 
   <!-- Watchlist section -->
@@ -1579,63 +1538,60 @@
     const pageData = filteredData.slice(start, end);
 
     const q = currentSearch;
-    let countText = `<strong>${total.toLocaleString()}</strong> 品目`;
-    if (q) countText += ` 「${escHtml(q)}」の検索結果`;
-    if (currentFilter !== 'all') {
-      const labels = { normal:'通常出荷', limited:'限定出荷', stopped:'供給停止' };
-      countText += ` [${labels[currentFilter] || currentFilter}]`;
-    }
-    document.getElementById('resultsCount').innerHTML = countText;
+    document.getElementById('resultsCount').innerHTML =
+      `検索結果：<strong>${total.toLocaleString()}件</strong>`;
 
-    const tbody = document.getElementById('tableBody');
+    const cards = document.getElementById('tableBody');
     if (pageData.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9">
-        <div class="no-results">
-          <div class="icon">&#x1F50D;</div>
-          <p>該当する医薬品が見つかりませんでした</p>
-        </div>
-      </td></tr>`;
+      cards.innerHTML = `<div class="no-results">
+        <div class="icon">&#x1F50D;</div>
+        <p>該当する医薬品が見つかりませんでした</p>
+      </div>`;
     } else {
-      tbody.innerHTML = pageData.map(row => {
-        const brand   = String(row[COL.BRAND] || '');
-        const generic = String(row[COL.GENERIC] || '');
-        const maker   = String(row[COL.MAKER] || '');
-        const unit    = String(row[COL.UNIT] || '');
-        const yj      = String(row[COL.YJ] || '');
-        const status  = row[COL.STATUS];
-        const reason  = String(row[COL.REASON] || '');
-        const resolution = String(row[COL.RESOLUTION] || '');
-        const watched = isWatched(yj);
+      cards.innerHTML = pageData.map(row => {
+        const brand      = String(row[COL.BRAND] || '');
+        const generic    = String(row[COL.GENERIC] || '');
+        const maker      = String(row[COL.MAKER] || '');
+        const unit       = String(row[COL.UNIT] || '');
+        const yj         = String(row[COL.YJ] || '');
+        const status     = row[COL.STATUS];
+        const updateDate = String(row[COL.UPDATE_DATE] || '');
+        const reason     = String(row[COL.REASON] || '').replace(/^[１-９\d]．\s*/, '');
+        const resolution = String(row[COL.RESOLUTION] || '').replace(/^[ア-オA-Z]．\s*/, '');
+        const resDate    = String(row[COL.RESOLUTION_DATE] || '');
+        const watched    = isWatched(yj);
+        const statusCls  = classifyStatus(status);
 
-        const yjEsc     = escAttr(yj);
-        const brandEsc  = escAttr(brand);
+        const yjEsc      = escAttr(yj);
+        const brandEsc   = escAttr(brand);
         const genericEsc = escAttr(generic);
-        const makerEsc  = escAttr(maker);
-        const unitEsc   = escAttr(unit);
-        const statusEsc = escAttr(String(status || ''));
+        const makerEsc   = escAttr(maker);
+        const unitEsc    = escAttr(unit);
+        const statusEsc  = escAttr(String(status || ''));
 
-        return `<tr>
-          <td class="watch-col">
+        return `<div class="drug-card${statusCls === 'stopped' ? ' card-changed' : ''}">
+          <div class="card-watch">
             <button class="watch-btn ${watched ? 'watched' : ''}" data-yj="${yjEsc}"
               onclick="toggleWatch('${yjEsc}','${brandEsc}','${genericEsc}','${makerEsc}','${unitEsc}','${statusEsc}')"
               title="${watched ? 'ウォッチリストから削除' : 'ウォッチリストに追加'}">${watched ? '\u2605' : '\u2606'}</button>
-          </td>
-          <td class="brand-name">${highlightMatch(brand, q)}</td>
-          <td class="generic-name"><span class="generic-link" data-generic="${escAttr(generic)}" onclick="searchByGeneric(this.dataset.generic)" title="この成分の代替品を検索">${highlightMatch(generic, q)}</span></td>
-          <td class="manufacturer">${highlightMatch(maker, q)}</td>
-          <td class="unit">${escHtml(unit)}</td>
-          <td class="yj-code">${escHtml(yj)}</td>
-          <td class="status-cell">${buildBadge(status)}</td>
-          <td class="reason">${escHtml(reason.replace(/^[１-９\d]．\s*/,''))}</td>
-          <td class="reason">${escHtml(resolution.replace(/^[ア-オA-Z]．\s*/,''))}</td>
-        </tr>`;
+          </div>
+          ${updateDate ? `<div class="card-meta">更新日：${escHtml(updateDate)}</div>` : ''}
+          <div class="card-status-row">${buildBadge(status)}</div>
+          <div class="card-brand">${highlightMatch(brand, q)}</div>
+          ${generic ? `<div class="card-generic-link" data-generic="${genericEsc}" onclick="searchByGeneric(this.dataset.generic)" title="この成分の代替品を検索">${highlightMatch(generic, q)}</div>` : ''}
+          ${unit ? `<div class="card-unit">${escHtml(unit)}</div>` : ''}
+          <div class="card-maker">製造販売：${highlightMatch(maker, q)}</div>
+          <div class="card-yj">YJ ${escHtml(yj)}</div>
+          ${reason ? `<div class="card-reason">${escHtml(reason)}</div>` : ''}
+          ${resolution ? `<div class="card-resolution">解消見込み：${escHtml(resolution)}${resDate ? `（${escHtml(resDate)}）` : ''}</div>` : ''}
+        </div>`;
       }).join('');
     }
 
     renderPagination(total);
   }
 
-  function isWatched(yjCode) {
+    function isWatched(yjCode) {
     return !!watchlist[yjCode];
   }
 
