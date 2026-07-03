@@ -210,30 +210,61 @@ def _parse_hot_zip(url, yj_filter):
             for name in names:
                 with zf.open(name) as f:
                     text = f.read().decode("cp932", errors="replace")
-                count = 0
-                for row in csv.reader(StringIO(text)):
-                    if len(row) < 19:
-                        continue
-                    yj = row[7].strip()
-                    if not YJ_RE.match(yj):
-                        continue
-                    if yj_filter and yj not in yj_filter:
-                        continue
-                    keitai = row[14].strip()
-                    if keitai == "調剤用":
-                        continue  # 調剤包装単位は表示対象外
-                    pkg = _build_pkg_str(row[14], row[15], row[16], row[17], row[18])
-                    if not pkg:
-                        continue
+                sub_map = _parse_hot_rows(csv.reader(StringIO(text)), yj_filter)
+                for yj, pkgs in sub_map.items():
                     lst = package_map.setdefault(yj, [])
-                    if pkg not in lst:
-                        lst.append(pkg)
-                        count += 1
-                print(f"  {name}: 包装 {count:,} 件")
+                    for p in pkgs:
+                        if p not in lst:
+                            lst.append(p)
+                print(f"  {name}: {len(sub_map):,} YJコード")
         return package_map
     except Exception as e:
         print(f"  HOTマスター解析失敗: {e}")
         return {}
+
+
+# jp-medicine-master-data ミラー（MEDIS HOT13を毎月UTF-8/ヘッダー付きCSVで再配布）
+HOT_CATALOG_URL = "https://raw.githubusercontent.com/shiro46mt/jp-medicine-master-data/main/data/data_catalog.json"
+HOT_DATA_BASE = "https://raw.githubusercontent.com/shiro46mt/jp-medicine-master-data/main/data/hot13/"
+
+
+def _parse_hot_rows(reader, yj_filter):
+    """CSV行イテレータからYJコード→包装リスト(dict)を抽出する"""
+    package_map = {}
+    for row in reader:
+        if len(row) < 19:
+            continue
+        yj = (row[7] or "").strip()
+        if not YJ_RE.match(yj):
+            continue  # ヘッダー行・不正行はここで除外
+        if yj_filter and yj not in yj_filter:
+            continue
+        if (row[14] or "").strip() == "調剤用":
+            continue  # 調剤包装単位は表示対象外
+        pkg = _build_pkg_str(row[14] or "", row[15] or "", row[16] or "",
+                             row[17] or "", row[18] or "")
+        if not pkg:
+            continue
+        lst = package_map.setdefault(yj, [])
+        if pkg not in lst:
+            lst.append(pkg)
+    return package_map
+
+
+def _fetch_hot13_from_mirror(yj_filter):
+    """GitHubミラーからHOT13最新CSVを取得して解析する（動作確認済みの主経路）"""
+    resp = requests.get(HOT_CATALOG_URL, headers=HEADERS, timeout=30)
+    resp.raise_for_status()
+    catalog = resp.json()
+    files = next(d for d in catalog["data"] if d["id"] == "hot13")["files"]
+    latest = sorted(files)[-1]
+    print(f"  HOT13最新ファイル: {latest} (カタログ更新: {catalog.get('update')})")
+
+    resp = requests.get(HOT_DATA_BASE + latest, headers=HEADERS, timeout=300)
+    resp.raise_for_status()
+    print(f"  ダウンロード完了: {len(resp.content):,} bytes")
+
+    return _parse_hot_rows(csv.reader(StringIO(resp.text)), yj_filter)
 
 
 def fetch_package_info():
@@ -251,21 +282,26 @@ def fetch_package_info():
     except Exception as e:
         print(f"data.json 読み込み失敗（全件対象）: {e}")
 
-    zip_candidates = _find_hot_zip_urls()
-    if not zip_candidates:
-        print("HOTマスターzipのURLが見つかりませんでした（スキップ）")
-        return
-
+    # 主経路: GitHubミラー（ローカルで動作確認済み）
     merged = {}
-    for label, url in zip_candidates:
-        pkg_map = _parse_hot_zip(url, yj_filter)
-        for yj, pkgs in pkg_map.items():
-            lst = merged.setdefault(yj, [])
-            for p in pkgs:
-                if p not in lst:
-                    lst.append(p)
-        if len(merged) > 1000:
-            break  # 全件マスターが取れたら十分
+    try:
+        merged = _fetch_hot13_from_mirror(yj_filter)
+        print(f"  ミラーから {len(merged):,} YJコード分の包装を取得")
+    except Exception as e:
+        print(f"  ミラー取得失敗: {e}")
+
+    # フォールバック: MEDIS公式サイトのzip
+    if len(merged) < 1000:
+        print("  フォールバック: MEDIS公式サイトを試行")
+        for label, url in _find_hot_zip_urls():
+            pkg_map = _parse_hot_zip(url, yj_filter)
+            for yj, pkgs in pkg_map.items():
+                lst = merged.setdefault(yj, [])
+                for p in pkgs:
+                    if p not in lst:
+                        lst.append(p)
+            if len(merged) > 1000:
+                break
 
     if not merged:
         print("包装情報取得ゼロ件（スキップ）")
