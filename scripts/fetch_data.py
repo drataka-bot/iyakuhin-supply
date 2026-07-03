@@ -119,12 +119,11 @@ def _find_yakka_excel_urls():
         for nn in ["01", "02", "03", "04", "06"]:
             url = f"{BASE}/{year}/04/xls/tp{year}0401-01_{nn}.xlsx"
             try:
-                resp = requests.head(url, headers=HEADERS, timeout=10, allow_redirects=True)
+                # HEADは弾かれるためGET+streamで存在確認のみ
+                resp = requests.get(url, headers=HEADERS, timeout=15, stream=True)
+                resp.close()
                 print(f"  {resp.status_code} {url.split('/')[-1]}")
                 if resp.status_code == 200:
-                    year_found.append((f"{year}年度_{nn}", url))
-                elif resp.status_code == 405:
-                    # HEAD不可だがGETなら取れる可能性あり
                     year_found.append((f"{year}年度_{nn}", url))
             except Exception as e:
                 print(f"  エラー {url.split('/')[-1]}: {e}")
