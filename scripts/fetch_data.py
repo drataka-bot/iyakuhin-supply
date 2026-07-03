@@ -131,10 +131,11 @@ def _find_yakka_excel_urls():
                 label = a.get_text(strip=True)
                 found.append((label, full_url))
             if found:
-                # _01 ファイル（品目リスト本体）を優先、なければ全件返す
-                main_list = [(l, u) for l, u in found if "_01." in u or "_01_" in u]
-                result = main_list if main_list else found
-                print(f"  → Excelリンク {len(found)}件 (品目リスト候補: {len(main_list)}件): {[u.split('/')[-1] for _,u in result[:3]]}")
+                # _05 は後発品有無情報（包装列なし）なので除外、それ以外は全区分取得
+                # 内服薬(_01)・注射薬(_02)・外用薬(_03)・歯科用薬(_04) など
+                product_list = [(l, u) for l, u in found if not u.endswith("_05.xlsx")]
+                result = product_list if product_list else found
+                print(f"  → Excelリンク {len(found)}件 (品目リスト: {len(result)}件): {[u.split('/')[-1] for _,u in result]}")
                 return result
             else:
                 print(f"  → .xlsxリンクなし")
