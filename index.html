@@ -1549,7 +1549,8 @@
         const unit       = String(row[COL.UNIT] || '');
         const yj         = String(row[COL.YJ] || '');
         const status     = row[COL.STATUS];
-        const updateDate = String(row[COL.UPDATE_DATE] || '');
+        const updateDateRaw = String(row[COL.UPDATE_DATE] || '');
+        const updateDate = /^\d{4}-\d{2}-\d{2}$/.test(updateDateRaw) ? updateDateRaw : '';
         const reason     = String(row[COL.REASON] || '').replace(/^[１-９\d]．\s*/, '');
         const resolution = String(row[COL.RESOLUTION] || '').replace(/^[ア-オA-Z]．\s*/, '');
         const resDate    = String(row[COL.RESOLUTION_DATE] || '');
