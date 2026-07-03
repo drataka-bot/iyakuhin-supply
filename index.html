@@ -442,29 +442,75 @@
     .drug-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.09); border-color: #c6d0dc; }
     .drug-card.card-changed { background: #fffcf5; border-color: #fbd38d; }
     .drug-card.card-improved { background: #f0fff4; border-color: #9ae6b4; }
-    .card-watch { position: absolute; top: 12px; right: 12px; }
-    .watch-btn {
+
+    /* Card top row: dates (left) + menu button (right) */
+    .card-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+    .card-dates {
+      font-size: 0.73rem;
+      color: #718096;
+      line-height: 1.7;
+    }
+    .card-menu-btn {
+      flex-shrink: 0;
       background: none;
-      border: none;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 6px;
+      width: 28px;
+      height: 28px;
       cursor: pointer;
-      font-size: 1.3rem;
-      padding: 2px 4px;
-      color: #cbd5e0;
-      transition: color 0.15s, transform 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #718096;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      transition: background 0.15s, border-color 0.15s;
       line-height: 1;
     }
-    .watch-btn:hover { color: #ed8936; transform: scale(1.15); }
-    .watch-btn.watched { color: #f6ad55; }
-    .card-meta { font-size: 0.73rem; color: #a0aec0; margin-bottom: 8px; line-height: 1.7; }
+    .card-menu-btn:hover { background: #f7fafc; border-color: #c6d0dc; }
+    .card-menu-popup {
+      position: absolute;
+      right: 12px;
+      top: 48px;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.13);
+      z-index: 200;
+      min-width: 170px;
+      overflow: hidden;
+    }
+    .card-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      color: #2d3748;
+      transition: background 0.1s;
+      white-space: nowrap;
+    }
+    .card-menu-item:hover { background: #f7fafc; }
+    .card-menu-item + .card-menu-item { border-top: 1px solid #f0f4f8; }
+    .card-menu-icon { font-size: 1rem; }
+
     .card-status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-    .card-brand { font-size: 1rem; font-weight: 700; color: #1a202c; margin-bottom: 5px; line-height: 1.4; padding-right: 34px; }
-    .card-generic-link { font-size: 0.82rem; color: #3182ce; cursor: pointer; display: inline-block; margin-bottom: 5px; }
+    .card-brand { font-size: 1rem; font-weight: 700; color: #1a202c; margin-bottom: 5px; line-height: 1.4; }
+    .card-package { font-size: 0.82rem; color: #4a5568; margin-bottom: 6px; padding-left: 2px; }
+    .card-package-dim { font-size: 0.82rem; color: #a0aec0; margin-bottom: 6px; padding-left: 2px; }
+    .card-generic-link { font-size: 0.8rem; color: #3182ce; cursor: pointer; display: inline-block; margin-bottom: 5px; }
     .card-generic-link:hover { text-decoration: underline; color: #2b6cb0; }
-    .card-unit { font-size: 0.78rem; color: #718096; margin-bottom: 5px; }
-    .card-maker { font-size: 0.75rem; color: #718096; }
+    .card-maker { font-size: 0.75rem; color: #718096; margin-top: 2px; }
     .card-reason { font-size: 0.75rem; color: #c53030; margin-top: 8px; padding-top: 8px; border-top: 1px solid #fed7d7; }
     .card-resolution { font-size: 0.75rem; color: #718096; margin-top: 4px; }
-    .card-yj { font-size: 0.7rem; color: #b0bac5; font-family: monospace; margin-top: 6px; }
+    .card-yj { font-size: 0.68rem; color: #c0c9d4; font-family: monospace; margin-top: 6px; }
     .prev-status-tag { font-size: 0.7rem; background: #fffaf0; border: 1px solid #fbd38d; color: #c05621; border-radius: 10px; padding: 1px 7px; }
     .prev-status {
       display: block;
@@ -473,34 +519,33 @@
       margin-top: 3px;
     }
 
-    /* Status badges */
+    /* Status badges — solid fills (DSJP style) */
     .badge {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 3px 10px;
+      gap: 5px;
+      padding: 4px 12px;
       border-radius: 20px;
-      font-size: 0.78rem;
-      font-weight: 600;
+      font-size: 0.8rem;
+      font-weight: 700;
       white-space: nowrap;
+      border: none;
     }
-    .badge-normal { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
-    .badge-limited-self { background: #fffaf0; color: #c05621; border: 1px solid #fbd38d; }
-    .badge-limited-other { background: #fffff0; color: #975a16; border: 1px solid #f6e05e; }
-    .badge-limited-misc { background: #fff5f5; color: #9c4221; border: 1px solid #fca5a5; }
-    .badge-stopped { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
-    .badge-unknown { background: #f7fafc; color: #718096; border: 1px solid #e2e8f0; }
+    .badge-normal        { background: #38a169; color: white; }
+    .badge-limited-self  { background: #d69e2e; color: white; }
+    .badge-limited-other { background: #d69e2e; color: white; }
+    .badge-limited-misc  { background: #d69e2e; color: white; }
+    .badge-stopped       { background: #2d3748; color: white; }
+    .badge-unknown       { background: transparent; color: #4a5568; border: 1.5px solid #cbd5e0; }
 
     /* Status dot */
     .dot {
       width: 7px; height: 7px;
       border-radius: 50%;
       display: inline-block;
+      background: rgba(255,255,255,0.7);
     }
-    .dot-normal { background: #48bb78; }
-    .dot-limited { background: #ed8936; }
-    .dot-stopped { background: #e53e3e; }
-    .dot-unknown { background: #a0aec0; }
+    .badge-unknown .dot { background: #a0aec0; }
 
     /* No results */
     .no-results {
@@ -1170,23 +1215,25 @@
 
       const reasonClean = reason.replace(/^[１-９\d]．\s*/, '');
       const resClean = resolution.replace(/^[ア-オA-Z]．\s*/, '');
+      const wpkg = packageInfo[yj] || '';
+      const wpkgEsc = escAttr(wpkg);
+      const wUpdateRaw = row ? String(row[COL.UPDATE_DATE] || '') : '';
+      const wUpdateDate = /^\d{4}-\d{2}-\d{2}$/.test(wUpdateRaw) ? wUpdateRaw : '';
       return `<div class="drug-card${improved ? ' card-improved' : ''}">
-        <div class="card-watch">
-          <button class="watch-btn watched" data-yj="${yjEsc}"
-            onclick="toggleWatch('${yjEsc}','${brandEsc}','${genericEsc}','${makerEsc}','${unitEsc}','${statusEsc}')"
-            title="ウォッチリストから削除">&#x2605;</button>
+        <div class="card-top-row">
+          <div class="card-dates">更新日：${wUpdateDate ? formatJpDate(wUpdateDate) : '—'}</div>
+          <button class="card-menu-btn" onclick="toggleCardMenu(event,'${yjEsc}','${brandEsc}','${genericEsc}','${makerEsc}','${unitEsc}','${statusEsc}','${wpkgEsc}')" title="メニュー">&#8942;</button>
         </div>
         <div class="card-status-row">
           ${buildBadge(status)}
-          ${improved ? '<span style="background:#c6f6d5;color:#276749;font-size:0.72rem;padding:1px 6px;border-radius:10px;font-weight:600;">&#x2605; 再開</span>' : ''}
+          ${improved ? '<span style="background:#38a169;color:white;font-size:0.72rem;padding:2px 8px;border-radius:10px;font-weight:700;">再開</span>' : ''}
           ${changed && !improved ? `<span class="prev-status-tag">前回: ${escHtml(getStatusLabel(prevStatus))}</span>` : ''}
         </div>
         <div class="card-brand">${escHtml(item.brand)}</div>
+        ${wpkg ? `<div class="card-package">${escHtml(wpkg)}</div>` :
+          item.unit ? `<div class="card-package-dim">規格：${escHtml(item.unit)}</div>` : ''}
         ${item.generic ? `<div class="card-generic-link" data-generic="${genericEsc}" onclick="searchByGeneric(this.dataset.generic)" title="この成分の代替品を検索">${escHtml(item.generic)}</div>` : ''}
-        ${item.unit ? `<div class="card-unit">規格：${escHtml(item.unit)}</div>` : ''}
-        ${packageInfo[yj] ? `<div class="card-unit">包装：${escHtml(packageInfo[yj])}</div>` : ''}
         <div class="card-maker">製造販売：${escHtml(item.maker)}</div>
-        <div class="card-yj">YJ ${escHtml(yj)}</div>
         ${reasonClean ? `<div class="card-reason">${escHtml(reasonClean)}</div>` : ''}
         ${resClean ? `<div class="card-resolution">解消見込み：${escHtml(resClean)}</div>` : ''}
       </div>`;
@@ -1194,6 +1241,58 @@
 
     container.innerHTML = `<div class="drug-cards">${rows}</div>`;
   }
+
+  // =========================================================
+  // Helpers
+  // =========================================================
+  function formatJpDate(dateStr) {
+    const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return dateStr;
+    return `${m[1]}年${parseInt(m[2])}月${parseInt(m[3])}日`;
+  }
+
+  let _openMenuYj = null;
+  function toggleCardMenu(event, yj, brand, generic, maker, unit, status, pkg) {
+    event.stopPropagation();
+    document.querySelectorAll('.card-menu-popup').forEach(el => el.remove());
+    if (_openMenuYj === yj) { _openMenuYj = null; return; }
+    _openMenuYj = yj;
+    const btn = event.currentTarget;
+    const card = btn.closest('.drug-card');
+    const watched = isWatched(yj);
+    const brandE = brand.replace(/'/g, "\\'");
+    const genericE = generic.replace(/'/g, "\\'");
+    const makerE = maker.replace(/'/g, "\\'");
+    const unitE = unit.replace(/'/g, "\\'");
+    const statusE = status.replace(/'/g, "\\'");
+    const popup = document.createElement('div');
+    popup.className = 'card-menu-popup';
+    popup.innerHTML = `
+      ${generic ? `<div class="card-menu-item" onclick="searchByGeneric('${genericE}');closeCardMenu()">
+        <span class="card-menu-icon">🔄</span><span>代替品検索</span>
+      </div>` : ''}
+      ${pkg ? `<div class="card-menu-item" onclick="searchByPackage('${pkg.replace(/'/g,"\\'").replace(/\\/g,"\\\\")}');closeCardMenu()">
+        <span class="card-menu-icon">📦</span><span>包装検索</span>
+      </div>` : ''}
+      <div class="card-menu-item" onclick="toggleWatch('${yj.replace(/'/g,"\\'")}','${brandE}','${genericE}','${makerE}','${unitE}','${statusE}');closeCardMenu();renderResults();">
+        <span class="card-menu-icon">${watched ? '★' : '☆'}</span><span>${watched ? 'ウォッチ解除' : 'ウォッチリスト追加'}</span>
+      </div>
+    `;
+    card.appendChild(popup);
+  }
+  function closeCardMenu() {
+    document.querySelectorAll('.card-menu-popup').forEach(el => el.remove());
+    _openMenuYj = null;
+  }
+  function searchByPackage(pkg) {
+    const name = pkg.split('(')[0].trim();
+    document.getElementById('searchInput').value = name;
+    currentSearch = name;
+    currentPage = 1;
+    showingWatchlist = false;
+    applyFilters();
+  }
+  document.addEventListener('click', () => closeCardMenu());
 
   // =========================================================
   // Status classification
@@ -1565,20 +1664,22 @@
         const unitEsc    = escAttr(unit);
         const statusEsc  = escAttr(String(status || ''));
 
+        const pkg = packageInfo[yj] || '';
+        const pkgEsc = escAttr(pkg);
         return `<div class="drug-card${statusCls === 'stopped' ? ' card-changed' : ''}">
-          <div class="card-watch">
-            <button class="watch-btn ${watched ? 'watched' : ''}" data-yj="${yjEsc}"
-              onclick="toggleWatch('${yjEsc}','${brandEsc}','${genericEsc}','${makerEsc}','${unitEsc}','${statusEsc}')"
-              title="${watched ? 'ウォッチリストから削除' : 'ウォッチリストに追加'}">${watched ? '\u2605' : '\u2606'}</button>
+          <div class="card-top-row">
+            <div class="card-dates">更新日：${updateDate ? formatJpDate(updateDate) : '—'}</div>
+            <button class="card-menu-btn" onclick="toggleCardMenu(event,'${yjEsc}','${brandEsc}','${genericEsc}','${makerEsc}','${unitEsc}','${statusEsc}','${pkgEsc}')" title="メニュー">&#8942;</button>
           </div>
-          ${updateDate ? `<div class="card-meta">更新日：${escHtml(updateDate)}</div>` : ''}
-          <div class="card-status-row">${buildBadge(status)}</div>
+          <div class="card-status-row">
+            ${buildBadge(status)}
+            ${reason ? '<span title="理由あり" style="font-size:1rem;cursor:default;">&#x1F4AC;</span>' : ''}
+          </div>
           <div class="card-brand">${highlightMatch(brand, q)}</div>
+          ${pkg ? `<div class="card-package">${escHtml(pkg)}</div>` :
+            unit ? `<div class="card-package-dim">規格：${escHtml(unit)}</div>` : ''}
           ${generic ? `<div class="card-generic-link" data-generic="${genericEsc}" onclick="searchByGeneric(this.dataset.generic)" title="この成分の代替品を検索">${highlightMatch(generic, q)}</div>` : ''}
-          ${unit ? `<div class="card-unit">規格：${escHtml(unit)}</div>` : ''}
-          ${packageInfo[yj] ? `<div class="card-unit">包装：${escHtml(packageInfo[yj])}</div>` : ''}
           <div class="card-maker">製造販売：${highlightMatch(maker, q)}</div>
-          <div class="card-yj">YJ ${escHtml(yj)}</div>
           ${reason ? `<div class="card-reason">${escHtml(reason)}</div>` : ''}
           ${resolution ? `<div class="card-resolution">解消見込み：${escHtml(resolution)}${resDate ? `（${escHtml(resDate)}）` : ''}</div>` : ''}
         </div>`;
