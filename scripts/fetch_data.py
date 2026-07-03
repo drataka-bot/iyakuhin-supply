@@ -107,23 +107,22 @@ def parse_excel(content):
 def _find_yakka_excel_urls():
     """薬価改定ページから品目リストExcelのURLを収集する"""
     today = date.today()
-    # 薬価改定は毎年4月・10月。直近2年分のURLを試す
-    candidate_pages = []
-    for year in [today.year, today.year - 1]:
-        candidate_pages.append(
-            f"https://www.mhlw.go.jp/topics/{year}/04/tp0401-1.html"
-        )
-        candidate_pages.append(
-            f"https://www.mhlw.go.jp/topics/{year}/10/tp1001-1.html"
-        )
 
-    found = []
+    # 正しいURLパターン: tp{YYYY}0401-01.html
+    # 10月追補収載分も同じ4月ハブページからリンクされる
+    candidate_pages = []
+    for year in [today.year, today.year - 1, today.year - 2]:
+        candidate_pages.append(f"https://www.mhlw.go.jp/topics/{year}/04/tp{year}0401-01.html")
+
+    print(f"薬価基準ページを検索中... ({len(candidate_pages)}候補)")
     for page_url in candidate_pages:
         try:
             resp = requests.get(page_url, headers=HEADERS, timeout=20)
+            print(f"  {resp.status_code} {page_url}")
             if not resp.ok:
                 continue
             soup = BeautifulSoup(resp.text, "html.parser")
+            found = []
             for a in soup.find_all("a", href=True):
                 href = a["href"]
                 if not href.lower().endswith(".xlsx"):
@@ -132,10 +131,15 @@ def _find_yakka_excel_urls():
                 label = a.get_text(strip=True)
                 found.append((label, full_url))
             if found:
-                print(f"薬価改定ページ発見: {page_url} ({len(found)}件)")
-                return found
+                # _01 ファイル（品目リスト本体）を優先、なければ全件返す
+                main_list = [(l, u) for l, u in found if "_01." in u or "_01_" in u]
+                result = main_list if main_list else found
+                print(f"  → Excelリンク {len(found)}件 (品目リスト候補: {len(main_list)}件): {[u.split('/')[-1] for _,u in result[:3]]}")
+                return result
+            else:
+                print(f"  → .xlsxリンクなし")
         except Exception as e:
-            print(f"薬価ページ取得失敗 {page_url}: {e}")
+            print(f"  エラー {page_url}: {e}")
 
     return []
 
@@ -149,31 +153,39 @@ def _parse_yakka_excel(url):
 
         wb = openpyxl.load_workbook(BytesIO(resp.content), data_only=True, read_only=True)
         package_map = {}
+        print(f"  シート数: {len(wb.worksheets)}")
+
+        YJ_LABELS = {"YJコード", "ＹＪコード", "ＹＪコ－ド", "YJ코드", "yjコード",
+                     "ＹＪ", "YJ", "薬価基準収載医薬品コード"}
+        PKG_LABELS = {"包装", "包　装", "包 装"}
 
         for ws in wb.worksheets:
             yj_col = pkg_col = None
-            header_row_found = False
+            header_row_idx = 0
 
-            for raw_row in ws.iter_rows(values_only=True):
+            for row_idx, raw_row in enumerate(ws.iter_rows(values_only=True)):
                 cells = [str(c or "") for c in raw_row]
+                norm_cells = [c.replace("　", "").replace(" ", "").replace("\n", "") for c in cells]
 
-                # ヘッダー行の探索（最初の20行以内）
-                if not header_row_found:
-                    for j, cell in enumerate(cells):
-                        norm = cell.replace("　", "").replace(" ", "").replace("\n", "")
-                        if norm in ("YJコード", "ＹＪコード", "ＹＪコ－ド"):
+                # ヘッダー行を探す（最初の30行以内）
+                if yj_col is None and row_idx < 30:
+                    for j, norm in enumerate(norm_cells):
+                        if norm in YJ_LABELS:
                             yj_col = j
-                        if norm in ("包装", "包　装"):
+                        if norm in PKG_LABELS:
                             pkg_col = j
                     if yj_col is not None and pkg_col is not None:
-                        header_row_found = True
+                        header_row_idx = row_idx
+                        print(f"  シート「{ws.title}」: YJコード列={yj_col}, 包装列={pkg_col} (行{row_idx})")
                     continue
 
+                if yj_col is None or pkg_col is None:
+                    continue
                 if len(raw_row) <= max(yj_col, pkg_col):
                     continue
-                yj  = cells[yj_col].strip()
+
+                yj  = norm_cells[yj_col].strip()
                 pkg = cells[pkg_col].strip()
-                # YJコードは英数字10〜14文字
                 if yj and 10 <= len(yj) <= 14 and pkg:
                     package_map[yj] = pkg
 
