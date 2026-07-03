@@ -105,44 +105,58 @@ def parse_excel(content):
 # ============================================================
 
 def _find_yakka_excel_urls():
-    """薬価改定ページから品目リストExcelのURLを収集する"""
+    """薬価基準品目リストExcelのURLを直接構築して存在確認する。
+    ハブページは403が多いため、既知パターンから直接試す。
+    _01=内服薬, _02=注射薬, _03=外用薬, _04=歯科用薬, _06=改定品目
+    _05=後発品有無情報（包装列なし）は除外。
+    """
     today = date.today()
+    BASE = "https://www.mhlw.go.jp/topics"
+    found = []
 
-    # 正しいURLパターン: tp{YYYY}0401-01.html
-    # 10月追補収載分も同じ4月ハブページからリンクされる
-    candidate_pages = []
     for year in [today.year, today.year - 1, today.year - 2]:
-        candidate_pages.append(f"https://www.mhlw.go.jp/topics/{year}/04/tp{year}0401-01.html")
+        year_found = []
+        for nn in ["01", "02", "03", "04", "06"]:
+            url = f"{BASE}/{year}/04/xls/tp{year}0401-01_{nn}.xlsx"
+            try:
+                resp = requests.head(url, headers=HEADERS, timeout=10, allow_redirects=True)
+                print(f"  {resp.status_code} {url.split('/')[-1]}")
+                if resp.status_code == 200:
+                    year_found.append((f"{year}年度_{nn}", url))
+                elif resp.status_code == 405:
+                    # HEAD不可だがGETなら取れる可能性あり
+                    year_found.append((f"{year}年度_{nn}", url))
+            except Exception as e:
+                print(f"  エラー {url.split('/')[-1]}: {e}")
 
-    print(f"薬価基準ページを検索中... ({len(candidate_pages)}候補)")
-    for page_url in candidate_pages:
-        try:
-            resp = requests.get(page_url, headers=HEADERS, timeout=20)
-            print(f"  {resp.status_code} {page_url}")
-            if not resp.ok:
-                continue
-            soup = BeautifulSoup(resp.text, "html.parser")
-            found = []
-            for a in soup.find_all("a", href=True):
-                href = a["href"]
-                if not href.lower().endswith(".xlsx"):
+        if year_found:
+            print(f"  → {year}年度: {len(year_found)}件")
+            found.extend(year_found)
+            break  # 最新年度が見つかればその年で完了
+
+    if not found:
+        print("直接URL確認失敗。ハブページをフォールバック検索中...")
+        for year in [today.year, today.year - 1]:
+            page_url = f"{BASE}/{year}/04/tp{year}0401-01.html"
+            try:
+                resp = requests.get(page_url, headers=HEADERS, timeout=20)
+                print(f"  {resp.status_code} {page_url}")
+                if not resp.ok:
                     continue
-                full_url = MHLW_BASE + href if href.startswith("/") else href
-                label = a.get_text(strip=True)
-                found.append((label, full_url))
-            if found:
-                # _05 は後発品有無情報（包装列なし）なので除外、それ以外は全区分取得
-                # 内服薬(_01)・注射薬(_02)・外用薬(_03)・歯科用薬(_04) など
-                product_list = [(l, u) for l, u in found if not u.endswith("_05.xlsx")]
-                result = product_list if product_list else found
-                print(f"  → Excelリンク {len(found)}件 (品目リスト: {len(result)}件): {[u.split('/')[-1] for _,u in result]}")
-                return result
-            else:
-                print(f"  → .xlsxリンクなし")
-        except Exception as e:
-            print(f"  エラー {page_url}: {e}")
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for a in soup.find_all("a", href=True):
+                    href = a["href"]
+                    if not href.lower().endswith(".xlsx") or href.endswith("_05.xlsx"):
+                        continue
+                    full_url = MHLW_BASE + href if href.startswith("/") else href
+                    found.append((a.get_text(strip=True), full_url))
+                if found:
+                    print(f"  → {len(found)}件")
+                    break
+            except Exception as e:
+                print(f"  エラー {page_url}: {e}")
 
-    return []
+    return found
 
 
 def _parse_yakka_excel(url):
