@@ -1271,9 +1271,9 @@
       ${generic ? `<div class="card-menu-item" onclick="searchByGeneric('${genericE}');closeCardMenu()">
         <span class="card-menu-icon">🔄</span><span>代替品検索</span>
       </div>` : ''}
-      ${pkg ? `<div class="card-menu-item" onclick="searchByPackage('${pkg.replace(/'/g,"\\'").replace(/\\/g,"\\\\")}');closeCardMenu()">
-        <span class="card-menu-icon">📦</span><span>包装検索</span>
-      </div>` : ''}
+      <div class="card-menu-item" onclick="searchByPackage('${brandE}');closeCardMenu()">
+        <span class="card-menu-icon">📦</span><span>包装検索（全規格・剤形）</span>
+      </div>
       <div class="card-menu-item" onclick="toggleWatch('${yj.replace(/'/g,"\\'")}','${brandE}','${genericE}','${makerE}','${unitE}','${statusE}');closeCardMenu();renderResults();">
         <span class="card-menu-icon">${watched ? '★' : '☆'}</span><span>${watched ? 'ウォッチ解除' : 'ウォッチリスト追加'}</span>
       </div>
@@ -1284,13 +1284,19 @@
     document.querySelectorAll('.card-menu-popup').forEach(el => el.remove());
     _openMenuYj = null;
   }
-  function searchByPackage(pkg) {
-    const name = pkg.split('(')[0].trim();
-    document.getElementById('searchInput').value = name;
-    currentSearch = name;
+  function searchByPackage(brand) {
+    // 品名から剤形・規格を取り除いた基幹名で検索し、
+    // 同じ製品の全規格・全剤形の供給状況（包装付き）を一覧表示する
+    // 例: 「ロキソニン錠６０ｍｇ」→「ロキソニン」で検索
+    const FORM_RE = /(錠|ＯＤ錠|OD錠|カプセル|細粒|顆粒|ドライシロップ|シロップ|散|内用液|内服液|吸入|点眼|点鼻|テープ|パップ|ゲル|クリーム|軟膏|ローション|坐剤|注射|注)/;
+    const m = brand.search(FORM_RE);
+    const base = (m > 0 ? brand.slice(0, m) : brand).trim() || brand;
+    document.getElementById('searchInput').value = base;
+    currentSearch = base;
     currentPage = 1;
     showingWatchlist = false;
     applyFilters();
+    document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   document.addEventListener('click', () => closeCardMenu());
 
