@@ -356,6 +356,21 @@
     .mode-btn.active { background: #3182ce; color: white; border-color: #3182ce; }
     .mode-btn:not(.active):hover { background: #edf2f7; }
 
+    /* Extra filters (薬剤区分・薬効分類・メーカー) */
+    .extra-filters { margin-top: 14px; border-top: 1px solid #f0f0f0; padding-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .filter-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .filter-group-label { font-size: 0.78rem; font-weight: 600; color: #4a5568; white-space: nowrap; min-width: 70px; }
+    .drug-class-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+    .drug-class-btn { padding: 4px 12px; border-radius: 14px; font-size: 0.78rem; cursor: pointer; border: 1px solid #cbd5e0; font-family: inherit; background: white; color: #4a5568; transition: all 0.15s; }
+    .drug-class-btn.active { background: #3182ce; color: white; border-color: #3182ce; }
+    .drug-class-btn:hover:not(.active) { background: #edf2f7; }
+    .filter-select { flex: 1; min-width: 160px; max-width: 320px; padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.85rem; font-family: inherit; color: #2d3748; background: white; }
+    .filter-active-bar { display: none; align-items: center; gap: 8px; padding: 6px 12px; background: #ebf8ff; border: 1px solid #90cdf4; border-radius: 6px; font-size: 0.82rem; color: #2c5282; margin-top: 4px; }
+    .filter-active-bar.visible { display: flex; }
+    .filter-reset-btn { margin-left: auto; background: none; border: none; color: #3182ce; cursor: pointer; font-size: 0.82rem; font-family: inherit; text-decoration: underline; }
+    .generic-link { cursor: pointer; color: #3182ce; text-decoration: underline dotted; }
+    .generic-link:hover { color: #2b6cb0; text-decoration: underline; }
+
     /* Filter buttons */
     .filter-label {
       font-size: 0.82rem;
@@ -842,6 +857,28 @@
       <button class="filter-btn limited" onclick="setFilter('limited', this)">&#x26A0; 限定出荷</button>
       <button class="filter-btn stopped" onclick="setFilter('stopped', this)">&#x2715; 供給停止</button>
     </div>
+    <div class="extra-filters" id="extraFilters">
+      <div class="filter-group">
+        <span class="filter-group-label">薬剤区分</span>
+        <div class="drug-class-btns" id="drugClassBtns"></div>
+      </div>
+      <div class="filter-group">
+        <span class="filter-group-label">薬効分類</span>
+        <select class="filter-select" id="pharmClassSelect" onchange="setPharmClass(this.value)">
+          <option value="">すべて</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-group-label">メーカー</span>
+        <select class="filter-select" id="makerSelect" onchange="setMaker(this.value)">
+          <option value="">すべて</option>
+        </select>
+      </div>
+      <div class="filter-active-bar" id="filterActiveBar">
+        <span id="filterActiveText"></span>
+        <button class="filter-reset-btn" onclick="resetExtraFilters()">フィルタをリセット</button>
+      </div>
+    </div>
   </div>
 
   <!-- Results section -->
@@ -905,6 +942,9 @@
   let currentSearch = '';
   let searchMode = 'and';
   let currentPage = 1;
+  let currentDrugClass = '';
+  let currentPharmClass = '';
+  let currentMaker = '';
   const PAGE_SIZE = 50;
   let showingWatchlist = false;
 
@@ -1332,6 +1372,10 @@
     currentFilter = 'all';
     currentSearch = '';
     currentPage = 1;
+    currentDrugClass = '';
+    currentPharmClass = '';
+    currentMaker = '';
+    populateDropdowns();
     applyFilters();
 
     // Check for status changes in watchlist
@@ -1385,12 +1429,104 @@
     applyFilters();
   }
 
+  // =========================================================
+  // Extra filters (薬剤区分・薬効分類・メーカー・代替品検索)
+  // =========================================================
+  function populateDropdowns() {
+    const drugClasses = [...new Set(allData.map(r => String(r[COL.DRUG_CLASS] || '').trim()).filter(Boolean))].sort();
+    const pharmClasses = [...new Set(allData.map(r => String(r[COL.PHARM_CLASS] || '').trim()).filter(Boolean))].sort();
+    const makers = [...new Set(allData.map(r => String(r[COL.MAKER] || '').trim()).filter(Boolean))].sort();
+
+    const dcContainer = document.getElementById('drugClassBtns');
+    dcContainer.innerHTML = drugClasses.map(dc =>
+      `<button class="drug-class-btn" data-dc="${escAttr(dc)}" onclick="setDrugClass(this.dataset.dc, this)">${escHtml(dc)}</button>`
+    ).join('');
+
+    const pharmSel = document.getElementById('pharmClassSelect');
+    pharmSel.innerHTML = '<option value="">すべて</option>';
+    pharmClasses.forEach(pc => {
+      const opt = document.createElement('option');
+      opt.value = pc;
+      opt.textContent = pc;
+      pharmSel.appendChild(opt);
+    });
+
+    const makerSel = document.getElementById('makerSelect');
+    makerSel.innerHTML = '<option value="">すべて</option>';
+    makers.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      makerSel.appendChild(opt);
+    });
+  }
+
+  function setDrugClass(dc, btn) {
+    currentDrugClass = currentDrugClass === dc ? '' : dc;
+    document.querySelectorAll('.drug-class-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.dc === currentDrugClass);
+    });
+    currentPage = 1;
+    applyFilters();
+    updateFilterActiveBar();
+  }
+
+  function setPharmClass(val) {
+    currentPharmClass = val;
+    currentPage = 1;
+    applyFilters();
+    updateFilterActiveBar();
+  }
+
+  function setMaker(val) {
+    currentMaker = val;
+    currentPage = 1;
+    applyFilters();
+    updateFilterActiveBar();
+  }
+
+  function resetExtraFilters() {
+    currentDrugClass = '';
+    currentPharmClass = '';
+    currentMaker = '';
+    document.querySelectorAll('.drug-class-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('pharmClassSelect').value = '';
+    document.getElementById('makerSelect').value = '';
+    currentPage = 1;
+    applyFilters();
+    updateFilterActiveBar();
+  }
+
+  function updateFilterActiveBar() {
+    const bar = document.getElementById('filterActiveBar');
+    const parts = [];
+    if (currentDrugClass) parts.push(`薬剤区分: ${currentDrugClass}`);
+    if (currentPharmClass) parts.push(`薬効分類: ${currentPharmClass}`);
+    if (currentMaker) parts.push(`メーカー: ${currentMaker}`);
+    if (parts.length > 0) {
+      document.getElementById('filterActiveText').textContent = parts.join(' / ');
+      bar.classList.add('visible');
+    } else {
+      bar.classList.remove('visible');
+    }
+  }
+
+  function searchByGeneric(genericName) {
+    currentSearch = genericName;
+    document.getElementById('searchInput').value = genericName;
+    currentPage = 1;
+    applyFilters();
+  }
+
   function applyFilters() {
     const terms = currentSearch.toLowerCase().split(/\s+/).filter(Boolean);
     filteredData = allData.filter(row => {
       if (currentFilter !== 'all') {
         if (classifyStatus(row[COL.STATUS]) !== currentFilter) return false;
       }
+      if (currentDrugClass && String(row[COL.DRUG_CLASS] || '').trim() !== currentDrugClass) return false;
+      if (currentPharmClass && String(row[COL.PHARM_CLASS] || '').trim() !== currentPharmClass) return false;
+      if (currentMaker && String(row[COL.MAKER] || '').trim() !== currentMaker) return false;
       if (terms.length > 0) {
         const fields = [
           String(row[COL.BRAND] || '').toLowerCase(),
@@ -1485,7 +1621,7 @@
               title="${watched ? 'ウォッチリストから削除' : 'ウォッチリストに追加'}">${watched ? '\u2605' : '\u2606'}</button>
           </td>
           <td class="brand-name">${highlightMatch(brand, q)}</td>
-          <td class="generic-name">${highlightMatch(generic, q)}</td>
+          <td class="generic-name"><span class="generic-link" data-generic="${escAttr(generic)}" onclick="searchByGeneric(this.dataset.generic)" title="この成分の代替品を検索">${highlightMatch(generic, q)}</span></td>
           <td class="manufacturer">${highlightMatch(maker, q)}</td>
           <td class="unit">${escHtml(unit)}</td>
           <td class="yj-code">${escHtml(yj)}</td>
@@ -1564,6 +1700,9 @@
     currentSearch = '';
     currentPage = 1;
     showingWatchlist = false;
+    currentDrugClass = '';
+    currentPharmClass = '';
+    currentMaker = '';
 
     document.getElementById('fileInput').value = '';
     document.getElementById('searchInput').value = '';
