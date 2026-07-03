@@ -945,6 +945,7 @@
   let filteredData = [];
   let currentFilter = 'all';
   let currentSearch = '';
+  let packageView = null; // 包装検索モード（有効時は検索語文字列が入る）
   let searchMode = 'and';
   let currentPage = 1;
   let currentDrugClass = '';
@@ -1293,6 +1294,7 @@
     const base = (m > 0 ? brand.slice(0, m) : brand).trim() || brand;
     document.getElementById('searchInput').value = base;
     currentSearch = base;
+    packageView = base; // 1包装=1カード表示を有効化
     currentPage = 1;
     showingWatchlist = false;
     applyFilters();
@@ -1603,6 +1605,26 @@
       }
       return true;
     });
+
+    // 包装検索モード: 検索語が変わったら解除、有効なら1包装=1カードに展開
+    if (packageView && packageView !== currentSearch) packageView = null;
+    if (packageView) {
+      const expanded = [];
+      filteredData.forEach(row => {
+        const pkgs = (packageInfo[String(row[COL.YJ] || '')] || '').split('、').filter(Boolean);
+        if (pkgs.length <= 1) {
+          expanded.push(row);
+        } else {
+          pkgs.forEach(p => {
+            const r = row.slice();
+            r[16] = p; // 包装単体表示用の拡張カラム
+            expanded.push(r);
+          });
+        }
+      });
+      filteredData = expanded;
+    }
+
     renderResults();
   }
 
@@ -1670,7 +1692,7 @@
         const unitEsc    = escAttr(unit);
         const statusEsc  = escAttr(String(status || ''));
 
-        const pkg = packageInfo[yj] || '';
+        const pkg = row[16] || packageInfo[yj] || '';
         const pkgEsc = escAttr(pkg);
         return `<div class="drug-card${statusCls === 'stopped' ? ' card-changed' : ''}">
           <div class="card-top-row">
