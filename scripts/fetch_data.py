@@ -108,14 +108,11 @@ def _find_yakka_excel_urls():
     """薬価改定ページから品目リストExcelのURLを収集する"""
     today = date.today()
 
-    # 試すページ（安定URLを先に、次に改定ページを年度順で）
-    candidate_pages = [
-        "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000188411_00044.html",
-        "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryou/yakka/index.html",
-    ]
-    for year in [today.year, today.year - 1]:
-        candidate_pages.append(f"https://www.mhlw.go.jp/topics/{year}/04/tp0401-1.html")
-        candidate_pages.append(f"https://www.mhlw.go.jp/topics/{year}/10/tp1001-1.html")
+    # 正しいURLパターン: tp{YYYY}0401-01.html
+    # 10月追補収載分も同じ4月ハブページからリンクされる
+    candidate_pages = []
+    for year in [today.year, today.year - 1, today.year - 2]:
+        candidate_pages.append(f"https://www.mhlw.go.jp/topics/{year}/04/tp{year}0401-01.html")
 
     print(f"薬価基準ページを検索中... ({len(candidate_pages)}候補)")
     for page_url in candidate_pages:
@@ -134,8 +131,11 @@ def _find_yakka_excel_urls():
                 label = a.get_text(strip=True)
                 found.append((label, full_url))
             if found:
-                print(f"  → Excelリンク {len(found)}件: {[l[:20] for l,u in found[:3]]}")
-                return found
+                # _01 ファイル（品目リスト本体）を優先、なければ全件返す
+                main_list = [(l, u) for l, u in found if "_01." in u or "_01_" in u]
+                result = main_list if main_list else found
+                print(f"  → Excelリンク {len(found)}件 (品目リスト候補: {len(main_list)}件): {[u.split('/')[-1] for _,u in result[:3]]}")
+                return result
             else:
                 print(f"  → .xlsxリンクなし")
         except Exception as e:
