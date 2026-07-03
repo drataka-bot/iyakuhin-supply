@@ -1,15 +1,19 @@
 """
 厚生労働省「医療用医薬品供給状況」Excelを取得して data.json に変換するスクリプト。
-薬価基準収載品目リストから包装情報を取得して package_info.json に保存する。
+MEDIS 医薬品HOTコードマスターから包装情報を取得して package_info.json に保存する。
 GitHub Actions から毎日実行される。
 """
 import requests
 import openpyxl
 import json
 import os
+import re
+import csv
 import sys
-from io import BytesIO
+import zipfile
+from io import BytesIO, StringIO
 from datetime import date, timedelta
+from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 MHLW_PAGE = "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryou/kouhatu-iyaku/04_00003.html"
@@ -101,150 +105,176 @@ def parse_excel(content):
 
 
 # ============================================================
-# 薬価基準収載品目リスト → package_info.json
+# MEDIS 医薬品HOTコードマスター → package_info.json
+#
+# 薬価基準収載品目リストには包装列が無いため、包装情報は
+# MEDISのHOT13マスター（月次全件・無償公開）から取得する。
+# CSVはヘッダーなし・Shift-JIS・24列:
+#   列8(idx7)  個別医薬品コード（YJコード）
+#   列15(idx14) 包装形態（PTP/バラ等）
+#   列16(idx15) 包装単位数   列17(idx16) 包装単位単位
+#   列18(idx17) 包装総量数   列19(idx18) 包装総量単位
 # ============================================================
 
-def _find_yakka_excel_urls():
-    """薬価基準品目リストExcelのURLを直接構築して存在確認する。
-    ハブページは403が多いため、既知パターンから直接試す。
-    _01=内服薬, _02=注射薬, _03=外用薬, _04=歯科用薬, _06=改定品目
-    _05=後発品有無情報（包装列なし）は除外。
-    """
-    today = date.today()
-    BASE = "https://www.mhlw.go.jp/topics"
-    found = []
+MEDIS_HOT_PAGES = [
+    "https://www2.medis.or.jp/master/hcode/",
+    "https://www2.medis.or.jp/hcode/",
+]
 
-    for year in [today.year, today.year - 1, today.year - 2]:
-        year_found = []
-        for nn in ["01", "02", "03", "04", "06"]:
-            url = f"{BASE}/{year}/04/xls/tp{year}0401-01_{nn}.xlsx"
-            try:
-                # HEADは弾かれるためGET+streamで存在確認のみ
-                resp = requests.get(url, headers=HEADERS, timeout=15, stream=True)
-                resp.close()
-                print(f"  {resp.status_code} {url.split('/')[-1]}")
-                if resp.status_code == 200:
-                    year_found.append((f"{year}年度_{nn}", url))
-            except Exception as e:
-                print(f"  エラー {url.split('/')[-1]}: {e}")
+YJ_RE = re.compile(r"^\d{7}[A-Za-z]\d{4}$")
 
-        if year_found:
-            print(f"  → {year}年度: {len(year_found)}件")
-            found.extend(year_found)
-            break  # 最新年度が見つかればその年で完了
 
-    if not found:
-        print("直接URL確認失敗。ハブページをフォールバック検索中...")
-        for year in [today.year, today.year - 1]:
-            page_url = f"{BASE}/{year}/04/tp{year}0401-01.html"
-            try:
-                resp = requests.get(page_url, headers=HEADERS, timeout=20)
-                print(f"  {resp.status_code} {page_url}")
-                if not resp.ok:
+def _find_hot_zip_urls():
+    """MEDISのダウンロードページから全件マスターzipのURLを収集する"""
+    for page_url in MEDIS_HOT_PAGES:
+        try:
+            resp = requests.get(page_url, headers=HEADERS, timeout=30)
+            print(f"  {resp.status_code} {page_url}")
+            if not resp.ok:
+                continue
+            resp.encoding = resp.apparent_encoding
+            soup = BeautifulSoup(resp.text, "html.parser")
+            found = []
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                if not href.lower().endswith(".zip"):
                     continue
-                soup = BeautifulSoup(resp.text, "html.parser")
-                for a in soup.find_all("a", href=True):
-                    href = a["href"]
-                    if not href.lower().endswith(".xlsx") or href.endswith("_05.xlsx"):
-                        continue
-                    full_url = MHLW_BASE + href if href.startswith("/") else href
-                    found.append((a.get_text(strip=True), full_url))
-                if found:
-                    print(f"  → {len(found)}件")
-                    break
-            except Exception as e:
-                print(f"  エラー {page_url}: {e}")
+                full_url = urljoin(page_url, href)
+                label = a.get_text(strip=True)
+                found.append((label, full_url))
+            if found:
+                # HOT13/全件らしきものを優先、HOT9・廃止・日次差分は後回し
+                def _priority(item):
+                    label, url = item
+                    name = url.split("/")[-1].lower() + label
+                    score = 0
+                    if "13" in name:
+                        score -= 2
+                    if "全" in label:
+                        score -= 1
+                    if "9" in name or "廃止" in label or "del" in name.lower():
+                        score += 2
+                    return score
+                found.sort(key=_priority)
+                print(f"  → zipリンク {len(found)}件: {[u.split('/')[-1] for _, u in found[:8]]}")
+                return found[:10]
+        except Exception as e:
+            print(f"  エラー {page_url}: {e}")
+    return []
 
-    return found
+
+def _build_pkg_str(keitai, unit_num, unit_unit, total_num, total_unit):
+    """包装形態・単位数・総量から「PTP 10錠×10」形式の文字列を組み立てる"""
+    keitai = keitai.strip()
+    unit_num = unit_num.strip()
+    unit_unit = unit_unit.strip()
+    total_num = total_num.strip()
+    total_unit = total_unit.strip()
+
+    def _num(s):
+        try:
+            return float(s.replace(",", ""))
+        except ValueError:
+            return None
+
+    def _fmt(f):
+        return str(int(f)) if f == int(f) else str(f)
+
+    u = _num(unit_num)
+    t = _num(total_num)
+
+    if u and t and t > u and (t / u) == int(t / u):
+        base = f"{_fmt(u)}{unit_unit}×{int(t / u)}"
+    elif t:
+        base = f"{_fmt(t)}{total_unit}"
+    elif u:
+        base = f"{_fmt(u)}{unit_unit}"
+    else:
+        return ""
+
+    return f"{keitai} {base}".strip() if keitai else base
 
 
-def _parse_yakka_excel(url):
-    """薬価基準ExcelからYJコード→包装のマッピングを抽出する"""
+def _parse_hot_zip(url, yj_filter):
+    """HOTマスターzipをダウンロードしてYJコード→包装リスト(dict)を返す"""
     try:
-        print(f"  薬価基準Excel取得: {url}")
-        resp = requests.get(url, headers=HEADERS, timeout=120)
+        print(f"  ダウンロード: {url}")
+        resp = requests.get(url, headers=HEADERS, timeout=300)
         resp.raise_for_status()
+        print(f"  {len(resp.content):,} bytes")
 
-        wb = openpyxl.load_workbook(BytesIO(resp.content), data_only=True, read_only=True)
         package_map = {}
-        print(f"  シート数: {len(wb.worksheets)}")
-
-        YJ_LABELS = {"YJコード", "ＹＪコード", "ＹＪコ－ド", "YJ코드", "yjコード",
-                     "ＹＪ", "YJ", "薬価基準収載医薬品コード"}
-        PKG_LABELS = {"包装", "包　装", "包 装"}
-
-        for ws in wb.worksheets:
-            yj_col = pkg_col = None
-            header_row_idx = 0
-
-            for row_idx, raw_row in enumerate(ws.iter_rows(values_only=True)):
-                cells = [str(c or "") for c in raw_row]
-                norm_cells = [c.replace("　", "").replace(" ", "").replace("\n", "") for c in cells]
-
-                # ヘッダー行を探す（最初の30行以内）
-                if yj_col is None and row_idx < 30:
-                    for j, norm in enumerate(norm_cells):
-                        if norm in YJ_LABELS:
-                            yj_col = j
-                        if norm in PKG_LABELS:
-                            pkg_col = j
-                    if yj_col is not None and pkg_col is not None:
-                        header_row_idx = row_idx
-                        print(f"  シート「{ws.title}」: YJコード列={yj_col}, 包装列={pkg_col} (行{row_idx})")
-                    continue
-
-                if yj_col is None or pkg_col is None:
-                    continue
-                if len(raw_row) <= max(yj_col, pkg_col):
-                    continue
-
-                yj  = norm_cells[yj_col].strip()
-                pkg = cells[pkg_col].strip()
-                if yj and 10 <= len(yj) <= 14 and pkg:
-                    package_map[yj] = pkg
-
-        wb.close()
-        print(f"  → {len(package_map):,} 件抽出")
+        with zipfile.ZipFile(BytesIO(resp.content)) as zf:
+            names = [n for n in zf.namelist() if n.lower().endswith((".csv", ".txt"))]
+            print(f"  zip内ファイル: {names}")
+            for name in names:
+                with zf.open(name) as f:
+                    text = f.read().decode("cp932", errors="replace")
+                count = 0
+                for row in csv.reader(StringIO(text)):
+                    if len(row) < 19:
+                        continue
+                    yj = row[7].strip()
+                    if not YJ_RE.match(yj):
+                        continue
+                    if yj_filter and yj not in yj_filter:
+                        continue
+                    keitai = row[14].strip()
+                    if keitai == "調剤用":
+                        continue  # 調剤包装単位は表示対象外
+                    pkg = _build_pkg_str(row[14], row[15], row[16], row[17], row[18])
+                    if not pkg:
+                        continue
+                    lst = package_map.setdefault(yj, [])
+                    if pkg not in lst:
+                        lst.append(pkg)
+                        count += 1
+                print(f"  {name}: 包装 {count:,} 件")
         return package_map
-
     except Exception as e:
-        print(f"  薬価基準Excel解析失敗: {e}")
+        print(f"  HOTマスター解析失敗: {e}")
         return {}
 
 
 def fetch_package_info():
-    """薬価基準収載品目リストから包装情報を取得して package_info.json に保存する"""
-    print("\n--- 包装情報取得 ---")
+    """MEDIS HOTマスターから包装情報を取得して package_info.json に保存する"""
+    print("\n--- 包装情報取得（MEDIS HOTマスター）---")
 
-    # 既存ファイルがあれば読み込んでおく（差分更新）
-    existing = {}
-    if os.path.exists(PACKAGE_FILE):
-        try:
-            with open(PACKAGE_FILE, encoding="utf-8") as f:
-                existing = json.load(f)
-            print(f"既存package_info.json: {len(existing):,} 件")
-        except Exception:
-            pass
+    # 供給状況データに存在するYJコードだけに絞ってファイルを小さく保つ
+    yj_filter = set()
+    try:
+        with open(OUTPUT_FILE, encoding="utf-8") as f:
+            for row in json.load(f).get("rows", []):
+                if len(row) > COL_YJ and row[COL_YJ]:
+                    yj_filter.add(row[COL_YJ])
+        print(f"対象YJコード: {len(yj_filter):,} 件")
+    except Exception as e:
+        print(f"data.json 読み込み失敗（全件対象）: {e}")
 
-    excel_candidates = _find_yakka_excel_urls()
-    if not excel_candidates:
-        print("薬価基準ExcelのURLが見つかりませんでした（スキップ）")
+    zip_candidates = _find_hot_zip_urls()
+    if not zip_candidates:
+        print("HOTマスターzipのURLが見つかりませんでした（スキップ）")
         return
 
-    merged = dict(existing)
-    for label, url in excel_candidates:
-        pkg_map = _parse_yakka_excel(url)
-        if pkg_map:
-            merged.update(pkg_map)
+    merged = {}
+    for label, url in zip_candidates:
+        pkg_map = _parse_hot_zip(url, yj_filter)
+        for yj, pkgs in pkg_map.items():
+            lst = merged.setdefault(yj, [])
+            for p in pkgs:
+                if p not in lst:
+                    lst.append(p)
+        if len(merged) > 1000:
+            break  # 全件マスターが取れたら十分
 
     if not merged:
         print("包装情報取得ゼロ件（スキップ）")
         return
 
+    out = {yj: "、".join(pkgs[:6]) for yj, pkgs in merged.items()}
     with open(PACKAGE_FILE, "w", encoding="utf-8") as f:
-        json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
-
-    print(f"package_info.json 保存: {len(merged):,} 件")
+        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+    print(f"package_info.json 保存: {len(out):,} 件")
 
 
 # ============================================================
