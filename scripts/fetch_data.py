@@ -8,7 +8,7 @@ import json
 import os
 import sys
 from io import BytesIO
-from datetime import date
+from datetime import date, timedelta
 from bs4 import BeautifulSoup
 
 MHLW_PAGE = "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryou/kouhatu-iyaku/04_00003.html"
@@ -81,6 +81,9 @@ def parse_excel(content):
                     row.append("")
                 elif hasattr(v, "strftime"):
                     row.append(v.strftime("%Y-%m-%d"))
+                elif isinstance(v, (int, float)) and 40000 < v < 60000:
+                    # Excelシリアル日付数値を変換（1900年1月1日=1基準）
+                    row.append((date(1899, 12, 30) + timedelta(days=int(v))).isoformat())
                 else:
                     row.append(str(v))
             rows.append(row)
