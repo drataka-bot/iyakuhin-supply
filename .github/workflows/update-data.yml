@@ -30,7 +30,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.json changes.json
+          git add data.json changes.json package_info.json
           git diff --cached --quiet && echo "データに変更なし" || (
             git commit -m "Auto-update: 医薬品供給状況 $(date +'%Y-%m-%d')" &&
             git push

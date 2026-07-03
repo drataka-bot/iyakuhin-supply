@@ -1,5 +1,6 @@
 """
 厚生労働省「医療用医薬品供給状況」Excelを取得して data.json に変換するスクリプト。
+薬価基準収載品目リストから包装情報を取得して package_info.json に保存する。
 GitHub Actions から毎日実行される。
 """
 import requests
@@ -15,6 +16,7 @@ MHLW_PAGE = "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryou
 MHLW_BASE = "https://www.mhlw.go.jp"
 OUTPUT_FILE = "data.json"
 CHANGES_FILE = "changes.json"
+PACKAGE_FILE = "package_info.json"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; DataFetcher/1.0)"
@@ -53,6 +55,17 @@ def download_excel(url):
     return resp.content
 
 
+def cell_to_str(v):
+    """セルの値を文字列に変換（日付・シリアル数値含む）"""
+    if v is None:
+        return ""
+    if hasattr(v, "strftime"):
+        return v.strftime("%Y-%m-%d")
+    if isinstance(v, (int, float)) and 40000 < v < 60000:
+        return (date(1899, 12, 30) + timedelta(days=int(v))).isoformat()
+    return str(v)
+
+
 def parse_excel(content):
     """Excel を読み込み、データ行の配列を返す"""
     wb = openpyxl.load_workbook(BytesIO(content), data_only=True, read_only=True)
@@ -62,6 +75,8 @@ def parse_excel(content):
     header_found = False
 
     for raw_row in ws.iter_rows(values_only=True):
+        if len(raw_row) <= COL_STATUS:
+            continue
         status_val = str(raw_row[COL_STATUS] or "")
 
         # データ開始行を検出（出荷状況が①〜⑤で始まる行）
@@ -74,24 +89,139 @@ def parse_excel(content):
             generic = str(raw_row[COL_GENERIC]  or "").strip()
             if not brand and not generic:
                 continue
-            # 各セルを文字列化（日付オブジェクト等も変換）
-            row = []
-            for v in raw_row[:16]:
-                if v is None:
-                    row.append("")
-                elif hasattr(v, "strftime"):
-                    row.append(v.strftime("%Y-%m-%d"))
-                elif isinstance(v, (int, float)) and 40000 < v < 60000:
-                    # Excelシリアル日付数値を変換（1900年1月1日=1基準）
-                    row.append((date(1899, 12, 30) + timedelta(days=int(v))).isoformat())
-                else:
-                    row.append(str(v))
+            row = [cell_to_str(v) for v in raw_row[:16]]
+            # 16列未満の行はパディング
+            while len(row) < 16:
+                row.append("")
             rows.append(row)
 
     wb.close()
     print(f"データ行数: {len(rows):,}")
     return rows
 
+
+# ============================================================
+# 薬価基準収載品目リスト → package_info.json
+# ============================================================
+
+def _find_yakka_excel_urls():
+    """薬価改定ページから品目リストExcelのURLを収集する"""
+    today = date.today()
+    # 薬価改定は毎年4月・10月。直近2年分のURLを試す
+    candidate_pages = []
+    for year in [today.year, today.year - 1]:
+        candidate_pages.append(
+            f"https://www.mhlw.go.jp/topics/{year}/04/tp0401-1.html"
+        )
+        candidate_pages.append(
+            f"https://www.mhlw.go.jp/topics/{year}/10/tp1001-1.html"
+        )
+
+    found = []
+    for page_url in candidate_pages:
+        try:
+            resp = requests.get(page_url, headers=HEADERS, timeout=20)
+            if not resp.ok:
+                continue
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                if not href.lower().endswith(".xlsx"):
+                    continue
+                full_url = MHLW_BASE + href if href.startswith("/") else href
+                label = a.get_text(strip=True)
+                found.append((label, full_url))
+            if found:
+                print(f"薬価改定ページ発見: {page_url} ({len(found)}件)")
+                return found
+        except Exception as e:
+            print(f"薬価ページ取得失敗 {page_url}: {e}")
+
+    return []
+
+
+def _parse_yakka_excel(url):
+    """薬価基準ExcelからYJコード→包装のマッピングを抽出する"""
+    try:
+        print(f"  薬価基準Excel取得: {url}")
+        resp = requests.get(url, headers=HEADERS, timeout=120)
+        resp.raise_for_status()
+
+        wb = openpyxl.load_workbook(BytesIO(resp.content), data_only=True, read_only=True)
+        package_map = {}
+
+        for ws in wb.worksheets:
+            yj_col = pkg_col = None
+            header_row_found = False
+
+            for raw_row in ws.iter_rows(values_only=True):
+                cells = [str(c or "") for c in raw_row]
+
+                # ヘッダー行の探索（最初の20行以内）
+                if not header_row_found:
+                    for j, cell in enumerate(cells):
+                        norm = cell.replace("　", "").replace(" ", "").replace("\n", "")
+                        if norm in ("YJコード", "ＹＪコード", "ＹＪコ－ド"):
+                            yj_col = j
+                        if norm in ("包装", "包　装"):
+                            pkg_col = j
+                    if yj_col is not None and pkg_col is not None:
+                        header_row_found = True
+                    continue
+
+                if len(raw_row) <= max(yj_col, pkg_col):
+                    continue
+                yj  = cells[yj_col].strip()
+                pkg = cells[pkg_col].strip()
+                # YJコードは英数字10〜14文字
+                if yj and 10 <= len(yj) <= 14 and pkg:
+                    package_map[yj] = pkg
+
+        wb.close()
+        print(f"  → {len(package_map):,} 件抽出")
+        return package_map
+
+    except Exception as e:
+        print(f"  薬価基準Excel解析失敗: {e}")
+        return {}
+
+
+def fetch_package_info():
+    """薬価基準収載品目リストから包装情報を取得して package_info.json に保存する"""
+    print("\n--- 包装情報取得 ---")
+
+    # 既存ファイルがあれば読み込んでおく（差分更新）
+    existing = {}
+    if os.path.exists(PACKAGE_FILE):
+        try:
+            with open(PACKAGE_FILE, encoding="utf-8") as f:
+                existing = json.load(f)
+            print(f"既存package_info.json: {len(existing):,} 件")
+        except Exception:
+            pass
+
+    excel_candidates = _find_yakka_excel_urls()
+    if not excel_candidates:
+        print("薬価基準ExcelのURLが見つかりませんでした（スキップ）")
+        return
+
+    merged = dict(existing)
+    for label, url in excel_candidates:
+        pkg_map = _parse_yakka_excel(url)
+        if pkg_map:
+            merged.update(pkg_map)
+
+    if not merged:
+        print("包装情報取得ゼロ件（スキップ）")
+        return
+
+    with open(PACKAGE_FILE, "w", encoding="utf-8") as f:
+        json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
+
+    print(f"package_info.json 保存: {len(merged):,} 件")
+
+
+# ============================================================
 
 def load_previous_status_map():
     """既存の data.json から YJコード→{status, brand, generic, maker} のマップを返す"""
@@ -123,10 +253,10 @@ def classify_change(old_status, new_status):
     old_ord = STATUS_ORDER.get(old_status[:1] if old_status else "", -1)
     new_ord = STATUS_ORDER.get(new_status[:1] if new_status else "", -1)
     if new_ord > old_ord:
-        return "improved"   # 改善（限定→通常 など）
+        return "improved"
     elif new_ord < old_ord:
-        return "worsened"   # 悪化（通常→限定 など）
-    return "changed"        # 同カテゴリ内の変化
+        return "worsened"
+    return "changed"
 
 
 def detect_changes(old_map, new_rows):
@@ -143,8 +273,6 @@ def detect_changes(old_map, new_rows):
             }
 
     changes = []
-
-    # ステータス変化を検出
     for yj, new_item in new_map.items():
         if yj in old_map:
             old_status = old_map[yj]["status"]
@@ -160,7 +288,6 @@ def detect_changes(old_map, new_rows):
                     "type":    classify_change(old_status, new_status),
                 })
         else:
-            # 新規追加品目で通常出荷以外（限定・停止で新規追加）
             new_status = new_item["status"]
             if new_status and new_status[:1] not in ("①", ""):
                 changes.append({
@@ -190,10 +317,9 @@ def update_changes_file(changes, today):
         except Exception:
             history = []
 
-    # 同じ日付のエントリは上書き
     history = [h for h in history if h.get("date") != today]
     history.insert(0, {"date": today, "changes": changes})
-    history = history[:180]  # 最大180日分
+    history = history[:180]
 
     with open(CHANGES_FILE, "w", encoding="utf-8") as f:
         json.dump({"history": history}, f, ensure_ascii=False, separators=(",", ":"))
@@ -203,7 +329,6 @@ def update_changes_file(changes, today):
 
 def main():
     try:
-        # 既存データを先に読み込む（上書き前に差分検出するため）
         old_map = load_previous_status_map()
 
         xlsx_url, filename = find_excel_url()
@@ -211,7 +336,6 @@ def main():
         rows = parse_excel(content)
         today = date.today().isoformat()
 
-        # 差分を検出してchanges.jsonを更新
         if old_map:
             changes = detect_changes(old_map, rows)
             update_changes_file(changes, today)
@@ -229,6 +353,9 @@ def main():
 
         size_kb = len(open(OUTPUT_FILE, encoding="utf-8").read()) // 1024
         print(f"保存完了: {OUTPUT_FILE} ({size_kb:,} KB, {len(rows):,} 件)")
+
+        # 包装情報を薬価基準から取得
+        fetch_package_info()
 
     except Exception as e:
         print(f"エラー: {e}", file=sys.stderr)
