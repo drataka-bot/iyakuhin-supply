@@ -1979,7 +1979,10 @@
       const newItems = changes.filter(c => c.type === 'new');
       const changed  = changes.filter(c => c.type === 'changed');
 
-      const tags = [
+      const noChange = changes.length === 0;
+      const tags = noChange
+        ? `<span class="history-tag changed">&#x2713; 更新確認済み・変化なし</span>`
+        : [
         improved.length ? `<span class="history-tag improved">&#x2705; 出荷再開 ${improved.length}件</span>` : '',
         worsened.length ? `<span class="history-tag worsened">&#x26A0; 悪化 ${worsened.length}件</span>` : '',
         newItems.length ? `<span class="history-tag new">&#x1F195; 新規 ${newItems.length}件</span>` : '',
@@ -2008,13 +2011,16 @@
       `).join('');
 
       const id = `hday${idx}`;
+      const body = noChange
+        ? `<div class="history-group-title" style="color:#a0aec0;font-weight:400;">この日は出荷状況の変化はありませんでした（データは正常に更新確認済み）</div>`
+        : bodyHtml;
       return `<div class="history-day">
         <div class="history-day-header" onclick="toggleHistoryDay('${id}')">
           <span class="history-date">${escHtml(day.date)}</span>
           <div class="history-summary">${tags}</div>
           <span class="history-chevron" id="${id}chev">&#x25BC;</span>
         </div>
-        <div class="history-body${idx === 0 ? ' open' : ''}" id="${id}">${bodyHtml}</div>
+        <div class="history-body${idx === 0 ? ' open' : ''}" id="${id}">${body}</div>
       </div>`;
     }).join('');
   }

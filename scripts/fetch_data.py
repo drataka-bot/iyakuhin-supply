@@ -396,11 +396,7 @@ def detect_changes(old_map, new_rows):
 
 
 def update_changes_file(changes, today):
-    """changes.json に今日の変化を追記する（最大180日分保持）"""
-    if not changes:
-        print("変化なし: changes.json の更新をスキップ")
-        return
-
+    """changes.json に今日の記録を追記する（変化なしの日も稼働確認として残す・最大180日分保持）"""
     history = []
     if os.path.exists(CHANGES_FILE):
         try:
@@ -409,14 +405,26 @@ def update_changes_file(changes, today):
         except Exception:
             history = []
 
+    # 同じ日の既存エントリを確認（同日複数回実行への対応）
+    todays_existing = next((h for h in history if h.get("date") == today), None)
+
+    if not changes:
+        # 変化なし。既に今日「変化あり」で記録済みなら上書きしない
+        if todays_existing and todays_existing.get("changes"):
+            print("変化なし: 本日は既に変化を記録済みのため据え置き")
+            return
+        entry = {"date": today, "changes": []}
+        print(f"変化なし: 稼働確認として記録 → {CHANGES_FILE}")
+    else:
+        entry = {"date": today, "changes": changes}
+        print(f"変化記録: {len(changes)} 件 → {CHANGES_FILE}")
+
     history = [h for h in history if h.get("date") != today]
-    history.insert(0, {"date": today, "changes": changes})
+    history.insert(0, entry)
     history = history[:180]
 
     with open(CHANGES_FILE, "w", encoding="utf-8") as f:
         json.dump({"history": history}, f, ensure_ascii=False, separators=(",", ":"))
-
-    print(f"変化記録: {len(changes)} 件 → {CHANGES_FILE}")
 
 
 def main():
