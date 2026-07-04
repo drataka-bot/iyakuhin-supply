@@ -512,6 +512,12 @@
     .card-resolution { font-size: 0.75rem; color: #718096; margin-top: 4px; }
     .card-yj { font-size: 0.68rem; color: #c0c9d4; font-family: monospace; margin-top: 6px; }
     .prev-status-tag { font-size: 0.7rem; background: #fffaf0; border: 1px solid #fbd38d; color: #c05621; border-radius: 10px; padding: 1px 7px; }
+    /* 先発/後発タグ */
+    .type-tag { font-size: 0.72rem; font-weight: 700; border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+    .type-senpatsu   { background: #ebf8ff; color: #2b6cb0; border: 1px solid #90cdf4; }  /* 先発品 */
+    .type-kouhatsu   { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }  /* 後発品 */
+    .type-choki      { background: #faf5ff; color: #6b46c1; border: 1px solid #d6bcfa; }  /* 長期収載品 */
+    .type-other      { background: #f7fafc; color: #718096; border: 1px solid #e2e8f0; }  /* その他 */
     .prev-status {
       display: block;
       font-size: 0.72rem;
@@ -887,6 +893,14 @@
         <div class="drug-class-btns" id="drugClassBtns"></div>
       </div>
       <div class="filter-group">
+        <span class="filter-group-label">先発/後発</span>
+        <div class="drug-class-btns">
+          <button class="drug-class-btn" data-pt="先発品" onclick="setProductType(this.dataset.pt, this)">先発品</button>
+          <button class="drug-class-btn" data-pt="後発品" onclick="setProductType(this.dataset.pt, this)">後発品</button>
+          <button class="drug-class-btn" data-pt="長期収載品" onclick="setProductType(this.dataset.pt, this)">長期収載品</button>
+        </div>
+      </div>
+      <div class="filter-group">
         <span class="filter-group-label">薬効分類</span>
         <select class="filter-select" id="pharmClassSelect" onchange="setPharmClass(this.value)">
           <option value="">すべて</option>
@@ -951,6 +965,7 @@
   let currentDrugClass = '';
   let currentPharmClass = '';
   let currentMaker = '';
+  let currentProductType = '';
   const PAGE_SIZE = 50;
   let showingWatchlist = false;
 
@@ -1227,6 +1242,7 @@
         </div>
         <div class="card-status-row">
           ${buildBadge(status)}
+          ${row ? buildTypeTag(row[COL.PRODUCT_TYPE]) : ''}
           ${improved ? '<span style="background:#38a169;color:white;font-size:0.72rem;padding:2px 8px;border-radius:10px;font-weight:700;">再開</span>' : ''}
           ${changed && !improved ? `<span class="prev-status-tag">前回: ${escHtml(getStatusLabel(prevStatus))}</span>` : ''}
         </div>
@@ -1331,6 +1347,17 @@
     else if (s.includes('その他')) label = '限定出荷（その他）';
     else if (s.includes('供給停止')) label = '供給停止';
     return `<span class="badge ${badgeCls}"><span class="dot ${dotCls}"></span>${escHtml(label)}</span>`;
+  }
+
+  function buildTypeTag(val) {
+    const s = String(val || '').trim();
+    if (!s) return '';
+    let cls = 'type-other', label = s;
+    if (s === '先発品' || s === '準先発品') cls = 'type-senpatsu';
+    else if (s === '後発品') cls = 'type-kouhatsu';
+    else if (s === '長期収載品') cls = 'type-choki';
+    else return ''; // その他医薬品・未収載医薬品は表示しない
+    return `<span class="type-tag ${cls}">${escHtml(label)}</span>`;
   }
 
   // =========================================================
@@ -1524,8 +1551,18 @@
 
   function setDrugClass(dc, btn) {
     currentDrugClass = currentDrugClass === dc ? '' : dc;
-    document.querySelectorAll('.drug-class-btn').forEach(b => {
+    document.querySelectorAll('.drug-class-btn[data-dc]').forEach(b => {
       b.classList.toggle('active', b.dataset.dc === currentDrugClass);
+    });
+    currentPage = 1;
+    applyFilters();
+    updateFilterActiveBar();
+  }
+
+  function setProductType(pt, btn) {
+    currentProductType = currentProductType === pt ? '' : pt;
+    document.querySelectorAll('.drug-class-btn[data-pt]').forEach(b => {
+      b.classList.toggle('active', b.dataset.pt === currentProductType);
     });
     currentPage = 1;
     applyFilters();
@@ -1550,6 +1587,7 @@
     currentDrugClass = '';
     currentPharmClass = '';
     currentMaker = '';
+    currentProductType = '';
     document.querySelectorAll('.drug-class-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('pharmClassSelect').value = '';
     document.getElementById('makerSelect').value = '';
@@ -1562,6 +1600,7 @@
     const bar = document.getElementById('filterActiveBar');
     const parts = [];
     if (currentDrugClass) parts.push(`薬剤区分: ${currentDrugClass}`);
+    if (currentProductType) parts.push(`先発/後発: ${currentProductType}`);
     if (currentPharmClass) parts.push(`薬効分類: ${currentPharmClass}`);
     if (currentMaker) parts.push(`メーカー: ${currentMaker}`);
     if (parts.length > 0) {
@@ -1586,6 +1625,13 @@
         if (classifyStatus(row[COL.STATUS]) !== currentFilter) return false;
       }
       if (currentDrugClass && String(row[COL.DRUG_CLASS] || '').trim() !== currentDrugClass) return false;
+      if (currentProductType) {
+        const pt = String(row[COL.PRODUCT_TYPE] || '').trim();
+        // 「先発品」ボタンは準先発品も含める
+        if (currentProductType === '先発品') {
+          if (pt !== '先発品' && pt !== '準先発品') return false;
+        } else if (pt !== currentProductType) return false;
+      }
       if (currentPharmClass && String(row[COL.PHARM_CLASS] || '').trim() !== currentPharmClass) return false;
       if (currentMaker && String(row[COL.MAKER] || '').trim() !== currentMaker) return false;
       if (terms.length > 0) {
@@ -1701,6 +1747,7 @@
           </div>
           <div class="card-status-row">
             ${buildBadge(status)}
+            ${buildTypeTag(row[COL.PRODUCT_TYPE])}
             ${reason ? '<span title="理由あり" style="font-size:1rem;cursor:default;">&#x1F4AC;</span>' : ''}
           </div>
           <div class="card-brand">${highlightMatch(brand, q)}</div>
