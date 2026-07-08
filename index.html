@@ -1349,15 +1349,20 @@
     return `<span class="badge ${badgeCls}"><span class="dot ${dotCls}"></span>${escHtml(label)}</span>`;
   }
 
+  // 列7は「2：後発品」「1：先発品」等の書式（数字＋コロン接頭辞）の場合があるため正規化
+  function normProductType(val) {
+    return String(val || '').replace(/^\s*\d+\s*[：:]\s*/, '').trim();
+  }
+
   function buildTypeTag(val) {
-    const s = String(val || '').trim();
+    const s = normProductType(val);
     if (!s) return '';
-    let cls = 'type-other', label = s;
+    let cls;
     if (s === '先発品' || s === '準先発品') cls = 'type-senpatsu';
     else if (s === '後発品') cls = 'type-kouhatsu';
     else if (s === '長期収載品') cls = 'type-choki';
     else return ''; // その他医薬品・未収載医薬品は表示しない
-    return `<span class="type-tag ${cls}">${escHtml(label)}</span>`;
+    return `<span class="type-tag ${cls}">${escHtml(s)}</span>`;
   }
 
   // =========================================================
@@ -1626,7 +1631,7 @@
       }
       if (currentDrugClass && String(row[COL.DRUG_CLASS] || '').trim() !== currentDrugClass) return false;
       if (currentProductType) {
-        const pt = String(row[COL.PRODUCT_TYPE] || '').trim();
+        const pt = normProductType(row[COL.PRODUCT_TYPE]);
         // 「先発品」ボタンは準先発品も含める
         if (currentProductType === '先発品') {
           if (pt !== '先発品' && pt !== '準先発品') return false;
