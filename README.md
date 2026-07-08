@@ -1,20 +1,6 @@
 # 医薬品供給状況検索システム
 
-## 機能の更新を本番サイトに反映する手順
-
-### 1. このURLを開く
-
-```
-https://github.com/drataka-bot/iyakuhin-supply/compare/main...claude/build-nyuka-now-xYKfB
-```
-
-### 2. 「Create pull request」ボタンをクリック
-
-### 3. 「Merge pull request」→「Confirm merge」をクリック
-
-以上で https://drataka-bot.github.io/iyakuhin-supply/ に反映されます（数分後）。
-
----
+本番サイト: https://drataka-bot.github.io/iyakuhin-supply/
 
 ## 仕組み
 
